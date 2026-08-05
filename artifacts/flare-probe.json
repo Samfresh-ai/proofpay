@@ -1,0 +1,169 @@
+{
+  "schemaVersion": 2,
+  "phase": 1,
+  "status": "PASS",
+  "observedAt": "2026-08-05T19:10:52.406Z",
+  "network": {
+    "name": "Flare Testnet Coston2",
+    "rpcUrl": "https://coston2-api.flare.network/ext/C/rpc",
+    "expectedChainId": 114,
+    "actualChainId": 114,
+    "testnet": true,
+    "blockNumber": "33669285"
+  },
+  "registry": {
+    "address": "0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019",
+    "assetManagerName": "AssetManagerFXRP",
+    "assetManagerAddress": "0xc1Ca88b937d0b528842F95d5731ffB586f4fbDFA",
+    "ftsoV2Name": "FtsoV2",
+    "ftsoV2Address": "0xC4e9c78EA53db782E28f28Fdf80BaF59336B304d"
+  },
+  "fxrp": {
+    "address": "0x0b6A3645c240605887a5532109323A3E12273dc7",
+    "name": "FXRP",
+    "symbol": "FTestXRP",
+    "decimals": 6
+  },
+  "xrpUsd": {
+    "feedId": "0x015852502f55534400000000000000000000000000",
+    "value": "1067990",
+    "decimals": 6,
+    "normalized": "1.06799",
+    "feedTimestamp": "1785957045",
+    "feedTimestampIso": "2026-08-05T19:10:45.000Z"
+  },
+  "transfer": {
+    "state": "CONFIRMED",
+    "amount": {
+      "atomic": "1000",
+      "display": "0.001"
+    },
+    "calldata": "0xa9059cbb000000000000000000000000b9cc4f51bb837dc56998474961250287f40fa68000000000000000000000000000000000000000000000000000000000000003e8",
+    "estimatedGas": "153745",
+    "chainIdGuard": {
+      "expected": 114,
+      "observedBeforeSigning": 114,
+      "passed": true
+    },
+    "transactionHash": "0x4c4394cfa2bbd2bed4a5125c4eacb34db8e7bd1a905e2dc9b9cbdf98e6d4503a",
+    "explorerUrl": "https://coston2-explorer.flare.network/tx/0x4c4394cfa2bbd2bed4a5125c4eacb34db8e7bd1a905e2dc9b9cbdf98e6d4503a",
+    "blockNumber": "33668951",
+    "blockTimestamp": "1785956106",
+    "blockTimestampIso": "2026-08-05T18:55:06.000Z",
+    "confirmations": "335",
+    "gasUsed": "151376",
+    "effectiveGasPrice": "650000000000",
+    "gasFee": {
+      "atomic": "98394400000000000",
+      "display": "0.0983944"
+    },
+    "transactionValue": {
+      "atomic": "0",
+      "display": "0"
+    },
+    "balanceDeltas": {
+      "senderFxrpAtomic": "-1000",
+      "recipientFxrpAtomic": "1000",
+      "senderC2flrAtomic": "-98394400000000000",
+      "matchExpectedFxrpTransfer": true,
+      "matchGasOnlyC2flrChange": true
+    },
+    "validation": {
+      "officialRpcChainId": 114,
+      "transactionChainId": 114,
+      "transactionTargetMatchesFxrp": true,
+      "calldataMatchesExactTransfer": true,
+      "matchingFxrpTransferLogs": 1,
+      "unrelatedErc20TransferLogs": 0,
+      "unrelatedTokenMoved": false,
+      "balancesReReadAtTransactionBlocks": true,
+      "noRealValueNetworkOrWallet": true
+    }
+  },
+  "sourceReferences": {
+    "network": "https://dev.flare.network/network/overview",
+    "faucet": "https://faucet.flare.network/",
+    "assetManager": "https://dev.flare.network/fassets/developer-guides/fassets-asset-manager-address-contracts-registry",
+    "fxrp": "https://dev.flare.network/fxrp/token-interactions/fxrp-address",
+    "fassetsReference": "https://dev.flare.network/fassets/reference",
+    "ftso": "https://dev.flare.network/fassets/developer-guides/fassets-settings-node",
+    "ftsoInterface": "https://dev.flare.network/ftso/solidity-reference/FtsoV2Interface"
+  },
+  "command": {
+    "executable": "npm run probe:flare --",
+    "arguments": [
+      "--validate"
+    ],
+    "output": [
+      "Coston2 chain ID: 114",
+      "AssetManagerFXRP: 0xc1Ca88b937d0b528842F95d5731ffB586f4fbDFA",
+      "FtsoV2: 0xC4e9c78EA53db782E28f28Fdf80BaF59336B304d",
+      "FXRP token: FXRP (FTestXRP), 6 decimals, 0x0b6A3645c240605887a5532109323A3E12273dc7",
+      "XRP/USD: 1.06799 (raw 1067990, decimals 6)",
+      "FTSO feed timestamp: 1785957045 (2026-08-05T19:10:45.000Z)",
+      "Validated transaction: 0x4c4394cfa2bbd2bed4a5125c4eacb34db8e7bd1a905e2dc9b9cbdf98e6d4503a",
+      "Sender before/after FTestXRP: 10 -> 9.999",
+      "Recipient before/after FTestXRP: 0 -> 0.001",
+      "Gas used: 151376; gas fee: 0.0983944 C2FLR",
+      "Independent Coston2 balance reads and isolated FXRP Transfer log: PASS"
+    ]
+  },
+  "funding": {
+    "route": "Official Flare Coston2 Faucet",
+    "url": "https://faucet.flare.network/",
+    "requestedAssets": [
+      "C2FLR",
+      "FXRP"
+    ],
+    "observedSenderC2flr": {
+      "atomic": "100000000000000000000",
+      "display": "100"
+    },
+    "observedSenderFxrp": {
+      "atomic": "10000000",
+      "display": "10"
+    }
+  },
+  "wallets": {
+    "sender": "0x3c47ddC46848A7a225d3491DA5c211e2E7A51F42",
+    "recipient": "0xB9CC4f51Bb837DC56998474961250287f40FA680",
+    "purpose": "disposable-coston2-only-test-infrastructure",
+    "secretStorage": {
+      "path": "/home/samfresh22/.local/share/proofpay/coston2-burner-wallets.json",
+      "fileMode": "0600",
+      "directoryMode": "0700",
+      "outsideRepository": true,
+      "secretValuesRecordedInEvidence": false
+    },
+    "before": {
+      "blockNumber": "33668950",
+      "senderFxrp": {
+        "atomic": "10000000",
+        "display": "10"
+      },
+      "recipientFxrp": {
+        "atomic": "0",
+        "display": "0"
+      },
+      "senderC2flr": {
+        "atomic": "100000000000000000000",
+        "display": "100"
+      }
+    },
+    "after": {
+      "blockNumber": "33668951",
+      "senderFxrp": {
+        "atomic": "9999000",
+        "display": "9.999"
+      },
+      "recipientFxrp": {
+        "atomic": "1000",
+        "display": "0.001"
+      },
+      "senderC2flr": {
+        "atomic": "99901605600000000000",
+        "display": "99.9016056"
+      }
+    }
+  }
+}
