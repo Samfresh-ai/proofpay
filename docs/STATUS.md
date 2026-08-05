@@ -1,15 +1,17 @@
 # ProofPay durable status
 
-Updated: 2026-08-05 22:28 WAT
+Updated: 2026-08-06 00:20 WAT
 
 ## Current state
 
-- Active phase: Phase 0, Phase 1, and Phase 2 complete.
-- Overall decision: `PHASE_2_PASS`; Phase 3 contract implementation requires a separate decision
-  and has not begun.
+- Active phase: Phase 0, Phase 1, Phase 2, and Phase 3A complete.
+- Overall decision: `PHASE_3A_PASS`; fuzz and invariant testing remains a separate Phase 3B
+  decision.
 - Application UI: not started.
-- Escrow contract: architecture and interface specification locked; business logic not started.
-- Foundry: minimal pinned scaffold and non-deployable compile-time interface probe only.
+- Escrow contract: production core implemented and deterministically unit-tested; not deployed or
+  audited.
+- Foundry: pinned production contract, deterministic mocks, and 56 Phase 3A unit tests. Fuzz and
+  invariant tests have not started.
 - Deployment: not started.
 - Repository secrets: none. Disposable test-wallet secrets remain outside the repository in an owner-only local file; no secret value is recorded in project evidence.
 
@@ -180,3 +182,84 @@ Gate: `PASS`
 Phase 2 makes the contract state machine, authority, math, FTSO freshness rule, public receipt,
 events, errors, invariants, and Phase 3 test matrix implementation-ready. It proves dependency and
 interface compilation only. Decide separately whether to authorize Phase 3 contract implementation.
+
+## Phase 3A — escrow implementation and deterministic unit tests
+
+Gate: `PASS`
+
+### Implemented contract
+
+- Added `contracts/src/ProofPayEscrow.sol` with exactly the persistent states `CREATED`, `FUNDED`,
+  `SUBMITTED`, `RELEASED`, `CANCELLED`, and `REFUNDED`. `TOP_UP_REQUIRED` remains derived.
+- Enforced only `CREATED -> FUNDED -> SUBMITTED -> RELEASED`, `CREATED -> CANCELLED`, and
+  `FUNDED -> REFUNDED`, with the locked freelancer/client authorities and exact deadline
+  boundaries.
+- The constructor requires Coston2 chain ID `114`, code-bearing nonzero FXRP and FTSOv2
+  dependencies, six FXRP decimals, a nonzero XRP/USD feed ID, and a nonzero maximum price age.
+- Every price-dependent path first checks `calculateFeeById`. A nonzero result raises
+  `UnsupportedFtsoFee`; an external fee/read failure raises `PriceReadFailed`; the production
+  `getFeedById` call sends explicitly zero native value and rejects invalid or stale observations.
+- Funding and payout use full-precision `Math.mulDiv` with upward rounding. Funding performs the
+  base conversion and fixed 10% protection as two distinct upward-rounded stages.
+- Funding/top-up transfer only the current calculated requirement. Release transfers nothing when
+  per-invoice FXRP is insufficient; otherwise freelancer payout plus client refund equals the
+  historical lock. Refund returns the complete unsubmitted lock.
+- `activeFxrpLiabilities` tracks all `FUNDED` and `SUBMITTED` deposits. Every financial path checks
+  current aggregate solvency, exact incoming/outgoing token deltas, and uses
+  checks-effects-interactions under `ReentrancyGuard`.
+- Evidence stores only one nonzero manifest hash and emits one opaque URI bounded to 256 bytes.
+- The ABI has no owner, admin, pause, rescue, fee reserve, native-token accounting, arbitrary
+  recipient, or unrestricted withdrawal path.
+- The Phase 2-only abstract interface probe and its constant test were removed only after the
+  production contract compiled against the same pinned Flare and OpenZeppelin imports.
+
+### Deterministic unit evidence
+
+- `contracts/test/ProofPayEscrowOracle.t.sol`: constructor, FTSO fee/read failures, invalid and
+  stale observations, returned decimals, explicit zero-value feed call, quote neutrality, deadline,
+  full-precision math, and two-stage rounding.
+- `contracts/test/ProofPayEscrow.t.sol`: creation, every role, funding, exact transfers and rollback,
+  evidence/hash/URI limits, cancellation, and strict unsubmitted refund behavior.
+- `contracts/test/ProofPayEscrowSettlement.t.sol`: all four locked price scenarios, exact top-up,
+  release conservation, duplicate release, aggregate liabilities, donation isolation,
+  cross-subsidy rejection, token-delta rollback, and fund/top-up/release/refund reentrancy
+  attempts.
+- `forge fmt --check`: passed.
+- `forge build --force`: passed with Solidity `0.8.25` and the pinned dependencies.
+- `forge test -vv`: passed the complete deterministic suite; no fuzz or invariant test is present.
+- Plain `forge coverage` was run and hit a compiler `stack too deep` error because Foundry disables
+  the configured IR pipeline for its default coverage mode. Foundry's documented
+  `forge coverage --ir-minimum` workaround passed. The coverage review added a missing funding
+  quote deadline case, removed two redundant unreachable per-invoice balance branches, and added
+  the remaining insufficient-top-up-balance failure case instead of testing trivial getters.
+  Final production-contract coverage was 100% lines, statements, branches, and functions; mock
+  helper branches were intentionally not padded with trivial tests.
+- `npm run typecheck`: passed.
+- Repository secret scan: passed. The only private-key-shaped source fields generate or load the
+  ignored owner-only Phase 1 wallet file; no value is embedded. All 64-hex repository candidates
+  are the already recorded public transaction/hash evidence.
+- `git diff --check`: passed.
+
+### Phase 3A changes from the Phase 2 specification
+
+The Phase 3A authorization explicitly superseded three Phase 2 interface details:
+
+- the constructor now receives feed ID and maximum price age as explicit third and fourth
+  dependencies instead of fixing them in a two-argument constructor;
+- every price read now performs the official `calculateFeeById` preflight and may raise the newly
+  mandated `UnsupportedFtsoFee` error;
+- aggregate active liabilities are exposed through a read-only generated getter so deterministic
+  tests and later receipts can verify solvency.
+
+The Foundry profile also enables `via_ir` because the exact public invoice record exceeds the
+legacy code generator's stack limit. No approved product behavior changed.
+
+### Remaining limitations
+
+- This phase supplies deterministic unit evidence only. Fuzz/stateful invariant testing belongs to
+  Phase 3B, and no deployment or live escrow receipt exists.
+- A submitted invoice still has no mediator, arbitration, timeout refund, automatic release, or
+  unilateral freelancer release. A refusing client can leave FXRP locked indefinitely.
+- Evidence hash and URI bind a public submission but do not prove its truth or quality.
+- A future nonzero FTSOv2 fee fails closed and requires an architecture revision.
+- Direct FXRP donations remain stranded by design. No audit or production-security claim is made.
