@@ -1,13 +1,15 @@
 # ProofPay durable status
 
-Updated: 2026-08-05 20:11 WAT
+Updated: 2026-08-05 22:28 WAT
 
 ## Current state
 
-- Active phase: Phase 0 and Phase 1 complete.
-- Overall decision: `PHASE_1_PASS`; Phase 2 requires a separate decision and has not begun.
+- Active phase: Phase 0, Phase 1, and Phase 2 complete.
+- Overall decision: `PHASE_2_PASS`; Phase 3 contract implementation requires a separate decision
+  and has not begun.
 - Application UI: not started.
-- Escrow contract: not started.
+- Escrow contract: architecture and interface specification locked; business logic not started.
+- Foundry: minimal pinned scaffold and non-deployable compile-time interface probe only.
 - Deployment: not started.
 - Repository secrets: none. Disposable test-wallet secrets remain outside the repository in an owner-only local file; no secret value is recorded in project evidence.
 
@@ -103,4 +105,78 @@ Gate: `PASS`
 
 ### Phase completion and next decision
 
-Phase 1 proved both sponsor operations required by the project gate: a live FTSOv2 XRP/USD read and a real confirmed FXRP transfer on Coston2. Decide separately whether to authorize Phase 2 contract work; no contract, frontend, or landing page was started here.
+Phase 1 proved both sponsor operations required by the project gate: a live FTSOv2 XRP/USD read
+and a real confirmed FXRP transfer on Coston2. Phase 2 was authorized later; no contract, frontend,
+or landing page was started during Phase 1.
+
+## Phase 2 — contract architecture and interface probe
+
+Gate: `PASS`
+
+### Locked architecture
+
+- Added `docs/ARCHITECTURE.md` and `docs/CONTRACT_SPEC.md` as the implementation boundary for the
+  future escrow.
+- Persistent states are exactly `CREATED`, `FUNDED`, `SUBMITTED`, `RELEASED`, `CANCELLED`, and
+  `REFUNDED`. `TOP_UP_REQUIRED` is derived and never stored.
+- The freelancer creates, submits evidence, and cancels before funding. The named client alone
+  funds, tops up, releases, and refunds a funded but unsubmitted invoice strictly after its
+  delivery deadline.
+- Evidence may be submitted through the exact delivery-deadline timestamp; refund becomes valid
+  only after it. A submitted invoice has no refund or automatic-release path.
+- The client can refuse release after evidence submission. The MVP has no mediator, arbitration,
+  or unilateral freelancer release.
+- Terms fixed at creation become immutable after funding. Funding and release observations retain
+  the raw price, returned decimals, and feed timestamp.
+- The evidence manifest hash is stored; its bounded URI is emitted once in `EvidenceSubmitted`.
+  The contract treats the URI as untrusted text.
+
+### Price and settlement policy
+
+- USD target and FXRP token units both use six decimals.
+- Required FXRP atomic units are `ceil(usdTarget * 10^feedDecimals / price)` using full-precision
+  integer math.
+- Funding applies a second upward-rounded fixed 10% buffer.
+- Release upward-rounds the freelancer payout, refunds only `locked - payout`, and transfers
+  nothing when locked FXRP is insufficient.
+- The four locked `$100.000000` examples produce payout/refund/top-up results of `80/30/0`,
+  `100/10/0`, `105.263158/4.736842/0`, and `0/0/1.111112` FXRP for release prices of `$1.25`,
+  `$1.00`, `$0.95`, and `$0.90` respectively.
+- XRP/USD uses the Phase 1 feed ID and the production `FtsoV2Interface`. Values must be positive,
+  decimals must be `0..18`, timestamps must be nonzero and not future, and age must be at most 30
+  seconds.
+- Flare documents block-latency updates at approximately 1.8 seconds. The 30-second maximum is a
+  ProofPay fail-closed risk policy, not a Flare-mandated constant.
+- Quote, fund, top-up, and release calls use a fresh read with no cache. Client financial actions
+  enforce an absolute quote deadline and caller-supplied maximum amount.
+
+### Pinned Foundry interface probe
+
+- Foundry project root: `contracts/`; Solidity: `0.8.25`.
+- Flare Foundry periphery: `0.1.52` at
+  `ca264d6a31ddfb53d1bef7cb7bd1942aa89d323a`.
+- OpenZeppelin Contracts: `v5.7.0` at
+  `cab19933c33c2ad1d4c7a84864a3601dddfd16f3`.
+- forge-std: `v1.16.2` at `bf647bd6046f2f7da30d0c2bf435e5c76a780c1b`.
+- The abstract `Phase2InterfaceProbe` compiles the exact official Coston2 registry,
+  `IAssetManager.fAsset()`, ERC-20, production FTSOv2, SafeERC20, and ReentrancyGuard surfaces.
+- The probe has no external entry point, invoice storage, settlement logic, deployment script, or
+  deployed address.
+
+### Phase 2 validation
+
+- `forge fmt --check`: passed.
+- `forge build`: passed with Solidity `0.8.25`.
+- `forge test`: passed one narrow Phase 1 network-constant test; no business-logic tests exist.
+- Independent BigInt verification matched the funding amount and all four worked integer examples.
+- `npm run typecheck`: passed.
+- Repository secret scan: passed; no secret value or wallet credential is present in the Phase 2
+  changes.
+- `git diff --check`: passed.
+- Final scope inspection found no `ProofPayEscrow`, deployment, frontend, or landing-page code.
+
+### Phase completion and next decision
+
+Phase 2 makes the contract state machine, authority, math, FTSO freshness rule, public receipt,
+events, errors, invariants, and Phase 3 test matrix implementation-ready. It proves dependency and
+interface compilation only. Decide separately whether to authorize Phase 3 contract implementation.
