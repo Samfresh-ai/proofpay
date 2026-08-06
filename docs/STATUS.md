@@ -1,17 +1,17 @@
 # ProofPay durable status
 
-Updated: 2026-08-06 00:20 WAT
+Updated: 2026-08-06 11:06 WAT
 
 ## Current state
 
-- Active phase: Phase 0, Phase 1, Phase 2, and Phase 3A complete.
-- Overall decision: `PHASE_3A_PASS`; fuzz and invariant testing remains a separate Phase 3B
+- Active phase: Phase 0, Phase 1, Phase 2, Phase 3A, and Phase 3B complete.
+- Overall decision: `PHASE_3B_PASS`; the contract is ready for a separate Coston2 escrow deployment
   decision.
 - Application UI: not started.
-- Escrow contract: production core implemented and deterministically unit-tested; not deployed or
-  audited.
-- Foundry: pinned production contract, deterministic mocks, and 56 Phase 3A unit tests. Fuzz and
-  invariant tests have not started.
+- Escrow contract: production core implemented, fuzzed, statefully invariant-tested, and reviewed;
+  not deployed or audited.
+- Foundry: pinned production contract, deterministic mocks, 56 Phase 3A unit tests, seven passing
+  Phase 3B financial-math tests, and six passing stateful invariants.
 - Deployment: not started.
 - Repository secrets: none. Disposable test-wallet secrets remain outside the repository in an owner-only local file; no secret value is recorded in project evidence.
 
@@ -263,3 +263,154 @@ legacy code generator's stack limit. No approved product behavior changed.
 - Evidence hash and URI bind a public submission but do not prove its truth or quality.
 - A future nonzero FTSOv2 fee fails closed and requires an architecture revision.
 - Direct FXRP donations remain stranded by design. No audit or production-security claim is made.
+
+## Phase 3B — economic fuzzing, stateful invariants, and live FTSO tolerance
+
+Gate: `PASS`
+
+### Checkpoint 1 of 3 — financial fuzz testing
+
+- Added `contracts/test/ProofPayEscrowFuzz.t.sol` without changing production contract code. Six
+  fuzz properties run 512 cases each, plus one deterministic supported-range endpoint test.
+- The documented fuzz domain is a USD target of `1..1e18` six-decimal units (`$0.000001` through
+  `$1,000,000,000,000`), feed decimals `0..18`, and normalized XRP/USD prices from `$0.01` through
+  `$100` where the selected decimal precision can represent that value. At zero decimals the
+  representable lower bound is `$1`.
+- Required payout matched an independent integer ceiling, always met the rational USD target, and
+  one fewer FXRP atomic unit always failed it. Funding matched the exact two-stage calculation:
+  upward-rounded base conversion followed by an upward-rounded 10% buffer.
+- Release flows conserved the prior invoice lock exactly; quote branches returned either
+  `locked - payout` as the refund or `payout - locked` as the top-up, never both. Normalization
+  matched at 0, 6, 12, and 18 feed decimals.
+- The minimum and maximum supported-domain endpoints completed without overflow or truncation.
+  The maximum case produced a `1e20`-atomic payout and `1.1e20`-atomic protected funding amount.
+- `/home/samfresh22/.foundry/bin/forge test --match-contract ProofPayEscrowFuzzTest -vv`: passed
+  seven tests, zero failed, zero skipped. Each fuzz property completed 512 runs.
+- Defects found: none. Production code changes: none.
+
+### Checkpoint 2 of 3 — stateful invariant testing
+
+- Added `contracts/test/ProofPayEscrowInvariant.t.sol` with one freelancer, one client, one
+  unauthorized actor, the existing `MockFXRP` and `MockFtsoV2`, three seeded invoices, and up to
+  eight tracked invoices per run.
+- The handler targets 14 actions: create, fund, submit, top up, release, cancel, deadline refund,
+  time advance, valid price change, invalid/stale/fee/reverting price configuration, direct token
+  donation, unauthorized calls, repeated terminal calls, and a forced underfunded release attempt.
+- Ghost accounting independently tracks active liabilities, direct donations, client deposits and
+  refunds, freelancer payouts, immutable creation/funding/evidence records, terminal invoice
+  records, and per-invoice terminal action counts.
+- Six invariants passed: aggregate active locks equal both ghost and contract liabilities;
+  liabilities remain solvent; donations remain exact non-liability surplus; funded terms,
+  evidence, and terminal records remain immutable; terminal transfers cannot repeat; only the
+  named parties receive escrow outflows; and all token supply remains at the client, freelancer,
+  escrow, or handler donation source with no unrestricted recipient.
+- Handler assertions also proved that unauthorized actions and every failed/underfunded release
+  leave invoice state, liabilities, party balances, and contract balance unchanged; successful
+  release pays the freelancer plus refunds the client exactly the prior lock; and cancellation or
+  deadline refund conserves balances.
+- Configuration: 128 invariant runs, depth 32, 4,096 handler calls per invariant, zero handler
+  reverts or discarded calls. Reproducible seed:
+  `0x000000000000000000000000000000000000000000000000000000003b202608`.
+- The initial harness run exposed a targeting error: specifying selectors without an explicit
+  target contract let Foundry call deployed mocks and the escrow directly. The smallest reproducer
+  was one direct non-handler call, for example `MockFtsoV2.getFeedById` with a random unconfigured
+  feed ID raising `UnexpectedFeedId`; random direct lifecycle calls similarly raised
+  `InvoiceNotFound`. Foundry did not print a seed. Adding the handler as the sole target fixed the
+  harness; this was not a production-contract defect.
+- After the harness correction, the complete deterministic, fuzz, and invariant suite was rerun
+  with the recorded seed: 69 tests passed, zero failed, zero skipped across five suites. No
+  production contract change was required.
+
+### Checkpoint 3 of 3 — live Coston2 FTSO tolerance
+
+- Added the strictly read-only `scripts/sample-ftso-tolerance.ts` sampler and saved its evidence at
+  `artifacts/ftso-tolerance.json`. The script resolves the current `FtsoV2` address through the
+  official Coston2 registry and uses the official RPC; it has no wallet, signing, faucet, or
+  transaction code path.
+- Collected 24 successful XRP/USD reads from `2026-08-06T09:42:30.358Z` through
+  `2026-08-06T09:45:17.476Z`, a 167.118-second successful-read span. Every record includes local
+  read time, raw value, decimals, feed timestamp, observed age, calculated fee, and RPC outcome.
+- Feed-age statistics: minimum `0.737s`, median `4.684s`, maximum `21.984s`. Failed reads: zero.
+  Nonzero `calculateFeeById` results: zero. Every successful observation returned six decimals.
+- Recommendation: keep the planned deployment `maximumPriceAge` at 30 seconds. The maximum healthy
+  observation remained 8.016 seconds below the limit, the median remained far inside it, and no
+  RPC failure or fee anomaly distorted the result. This is a bounded operational sample, not a
+  guarantee of future feed cadence.
+- `docs/CONTRACT_SPEC.md` remains unchanged because the evidence supports, rather than changes, the
+  existing 30-second deployment setting.
+
+### Independent contract review
+
+- Authority and transitions: every public lifecycle function retains the specified freelancer or
+  client authority, while the two quote functions remain open simulations. The only reachable
+  transitions are `CREATED -> FUNDED -> SUBMITTED -> RELEASED`, `CREATED -> CANCELLED`, and
+  `FUNDED -> REFUNDED`; terminal-state and duplicate-transfer attempts fail.
+- Interaction safety: fund, top-up, release, and deadline refund are `nonReentrant`, commit effects
+  before token transfers, validate exact contract balance deltas, and revert atomically on token
+  mismatch. Aggregate liability changes match the associated invoice lock change.
+- Oracle and client guards: every price path preflights `calculateFeeById`, rejects a nonzero fee,
+  sends zero native value to the feed, rejects reverting/zero/malformed/future/stale observations,
+  and enforces quote deadlines and client maxima at their exact equality boundaries.
+- Math and evidence: payout and both funding stages use full-precision upward rounding. Fuzz and
+  stateful settlement evidence confirms minimal sufficient payout, exact top-up/refund arithmetic,
+  lock conservation, and immutable funded terms and evidence.
+- Surface review: `forge inspect` shows the nine lifecycle functions, two quote functions, and
+  read-only constants/dependency/invoice/liability getters. Storage contains only the invoice
+  mapping, aggregate liabilities, and next invoice ID. Optimized assembly contains no
+  `DELEGATECALL`, `CALLCODE`, or `SELFDESTRUCT` opcode. There is no admin, owner, rescue, pause,
+  fee, treasury, proxy, arbitrary-recipient, native-withdrawal, or unrestricted-token-withdrawal
+  surface.
+- Compiler/lint review: Solidity `0.8.25` compiled successfully. The only warning in production is
+  Forge's conservative `int8 -> uint8` lint at the scale calculation; every production caller
+  first proves the value is `0..18`, and the fuzz suite covers that full range. Remaining messages
+  are naming-style notes. No critical or high-severity defect remains.
+- ABI and storage layout inspection passed. Production `ProofPayEscrow` size is 7,106-byte runtime
+  and 7,793-byte initcode, leaving 17,470 and 41,359 bytes of the respective limits.
+- Dependency pins match the lock and submodule commits: Flare periphery `0.1.52` at
+  `ca264d6a31ddfb53d1bef7cb7bd1942aa89d323a`, forge-std `v1.16.2` at
+  `bf647bd6046f2f7da30d0c2bf435e5c76a780c1b`, and OpenZeppelin Contracts `v5.7.0` at
+  `cab19933c33c2ad1d4c7a84864a3601dddfd16f3`. JavaScript dependency versions match lockfile v3.
+- Slither was not run because it is not installed. No static-analysis stack was installed or
+  repaired. This review is not an audit.
+
+### Final validation
+
+- `/home/samfresh22/.foundry/bin/forge fmt --check`: passed.
+- `/home/samfresh22/.foundry/bin/forge build --force`: passed; 41 files compiled with Solidity
+  `0.8.25`.
+- Deterministic suites: 56 passed, zero failed, zero skipped across three suites.
+- Financial fuzz suite: seven passed, zero failed, zero skipped; six properties completed 512 runs
+  each and the supported-range endpoint test passed.
+- Stateful invariant suite: six passed, zero failed, zero skipped; 128 runs, depth 32, 4,096 calls
+  per invariant, zero handler reverts, with seed
+  `0x000000000000000000000000000000000000000000000000000000003b202608`.
+- `/home/samfresh22/.foundry/bin/forge coverage --ir-minimum`: passed all 69 tests. Production
+  `ProofPayEscrow.sol` coverage is 100% lines (`210/210`), statements (`246/246`), branches
+  (`42/42`), and functions (`20/20`). Coverage remains supporting evidence, not an audit.
+- `npm run typecheck`: passed under strict TypeScript settings.
+- Repository secret scan: passed with zero high-confidence credential patterns. All 64-hex
+  candidates are the already public Phase 1 calldata/transaction hash or the recorded Foundry
+  seed; no wallet secret is present.
+- Both JSON evidence artifacts parse successfully; `git diff --check` passed.
+- Phase 3B diff inspection found no deployment, transaction, faucet, wallet creation,
+  production-contract edit, frontend, landing page, or unrelated feature.
+
+### Phase 3B defects and limitations
+
+- Production defects found and fixed: none. The only failure was the initial invariant-harness
+  target configuration described in checkpoint 2; its smallest counterexample was preserved in
+  the checkpoint record and the handler targeting was corrected.
+- Fuzz proof is bounded to the documented Phase 3B domain. The contract does not enforce that
+  operational maximum at invoice creation, so inputs outside the proved domain may fail later
+  quotes rather than silently truncate.
+- The live FTSO evidence is one 167.118-second Coston2 sample and cannot guarantee future cadence.
+- A submitted invoice still has no arbitration, timeout refund, automatic release, or unilateral
+  freelancer release; a refusing client can leave FXRP locked indefinitely.
+- Evidence binds bytes and a retrieval URI but does not prove truth or quality. A future nonzero
+  FTSO fee fails closed and requires architecture revision. Direct FXRP donations remain stranded.
+- No deployment, live escrow receipt, external audit, or production-security claim exists.
+
+### Phase completion
+
+- Commit subject on PASS: `test: prove ProofPay economic invariants`.
+- Next decision: `READY FOR COSTON2 ESCROW DEPLOYMENT`.

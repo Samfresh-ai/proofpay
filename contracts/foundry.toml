@@ -18,3 +18,11 @@ remappings = [
 line_length = 100
 tab_width = 4
 bracket_spacing = true
+
+[profile.default.fuzz]
+runs = 512
+
+[profile.default.invariant]
+runs = 128
+depth = 32
+fail_on_revert = true

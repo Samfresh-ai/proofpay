@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "probe:flare": "tsx scripts/probe-flare.ts",
+    "probe:ftso-tolerance": "tsx scripts/sample-ftso-tolerance.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
