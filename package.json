@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "deploy:coston2": "tsx scripts/deploy-coston2.ts",
+    "live:coston2": "tsx scripts/run-live-invoice.ts",
     "probe:flare": "tsx scripts/probe-flare.ts",
     "probe:ftso-tolerance": "tsx scripts/sample-ftso-tolerance.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "verify:live:coston2": "tsx scripts/verify-live-invoice.ts"
   },
   "dependencies": {
     "viem": "2.55.11"

@@ -1,20 +1,23 @@
 # ProofPay durable status
 
-Updated: 2026-08-08 11:04 WAT
+Updated: 2026-08-08 13:20 WAT
 
 ## Current state
 
-- Active phase: Phase 0, Phase 1, Phase 2, Phase 3A, Phase 3B, and Phase 4A complete.
-- Overall decision: `PHASE_4A_PASS`; the confirmed Coston2 contract is ready for a separate live
-  invoice-flow decision.
+- Active phase: Phase 0 through Phase 4B complete.
+- Overall decision: `PHASE_4B_PASS`; one complete Coston2 invoice settled and independently
+  verified. The next decision is the product interface.
 - Application UI: not started.
-- Escrow contract: production core implemented, fuzzed, statefully invariant-tested, deployed to
+- Escrow contract: core implemented, fuzzed, statefully invariant-tested, deployed to
   Coston2, and source-verified; not audited or claimed production-ready.
 - Foundry: pinned production contract, deterministic mocks, 56 Phase 3A unit tests, seven passing
   Phase 3B financial-math tests, and six passing stateful invariants.
 - Deployment: `ProofPayEscrow` is confirmed at
   `0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21` on Coston2 chain `114`; deployment and verification
   evidence is in `deployment/coston2.json`.
+- Live receipt: invoice `1` moved `CREATED -> FUNDED -> SUBMITTED -> RELEASED`; payout and refund
+  reconcile to its lock, and active liabilities returned to zero. Evidence is in
+  `docs/LIVE_RECEIPT.md` and the Phase 4B artifacts.
 - Repository secrets: none. Disposable test-wallet secrets remain outside the repository in an owner-only local file; no secret value is recorded in project evidence.
 
 ## Phase 0 — rules, licensing, and repository setup
@@ -501,3 +504,98 @@ Explorer evidence:
 
 - Commit subject on PASS: `deploy: publish ProofPay escrow on Coston2`.
 - Next decision: `READY FOR LIVE INVOICE FLOW`.
+
+## Phase 4B — complete Coston2 invoice settlement
+
+Gate: `PASS`
+
+### Preflight and durable execution
+
+- Reused the Phase 1 client and freelancer wallets from owner-only local storage. Their public
+  addresses matched the required identities; no private key, wallet, or faucet request was
+  created or recorded.
+- The pre-transaction checkpoint independently matched chain ID `114`, the Phase 4A runtime hash,
+  immutable dependencies, six-decimal FXRP, zero FTSOv2 fee, and a valid XRP/USD observation aged
+  22 seconds. The contract had zero invoices, liabilities, FXRP balance, and surplus.
+- The client held `9.999 FXRP` and `98.8265147 C2FLR`; the freelancer held `0.001 FXRP` and no
+  C2FLR. The client therefore transferred exactly `1 C2FLR` for freelancer gas. This was separate
+  from the invoice and confirmed in transaction
+  `0xe59af5bf8adda39214a68489462b5f0a3a356be669554380e17759b71ab76170`.
+- The protected preflight requirement for `$5.00` was `5.307708 FXRP`, below the `8 FXRP` limit,
+  so the target remained `$5.00`; no fallback invoice was created.
+- `artifacts/coston2-live-invoice.json` checkpointed every intended action before signing, its
+  deterministic signed hash before broadcast, the RPC-returned hash immediately after submission,
+  receipt, event, historical balances, and re-read state. Exactly one invoice was created.
+- The first read-only resume-identity attempt encountered a transient official-RPC fetch failure
+  before any intent, signing, or broadcast. It changed no chain state; the retry passed and every
+  later action reconciled normally.
+
+### Scope, funding, and evidence
+
+- Canonical scope bytes hash to
+  `0x3bf5d3c5e4c43cfd1d31f567803150989c95ae290f2b20196d132c9f03148eb9`. Freelancer transaction
+  `0x0de4d5979553124244b1677af47938d347b15f3fb8f773177b497413c8cff298` created invoice `1` for
+  `5,000,000` USD atomic units with client/freelancer identities, scope hash, and deadline intact.
+- A read-only expired-deadline `fundInvoice` simulation returned the exact decoded
+  `ExpiredQuote(1786191061, 1786191062)` data. Same-block snapshots were unchanged and no failing
+  transaction was sent.
+- `quoteFunding` returned `5.301211 FXRP` protected funding at raw XRP/USD `1,037,499`, six
+  decimals, feed timestamp `1786191088`; independent two-stage upward rounding matched. The 2%
+  transaction maximum was `5.407236 FXRP` and was approved exactly in transaction
+  `0x2bf02a049ad9fabc477c744189dca30a69ee0d37d3684fab3e304292c1c73c55`.
+- Funding transaction `0x48e8ffcc165c61c25efd2e91eef8aa550441d69b6e2cf5c8769affd24acd5e83`
+  pulled exactly `5.299945 FXRP` at raw price `1,037,747`; the invoice, contract balance, and active
+  liabilities all recorded that lock in `FUNDED` state.
+- Canonical evidence bytes hash to
+  `0x84670d349f4ccd01e15e8c6028d03bcc65ee56f072361cc03e44be9e7b927ca5` and bind the Phase 4A
+  contract, transaction, block, runtime hash, constructor dependencies, commit, explorer page, and
+  completion note. Transaction
+  `0x70c477613d2078a34d41e73fabb2e21665809f88403fbd481c5404a116b50fa1` stored that hash, emitted
+  the verified explorer URI, and moved the unchanged lock and liabilities to `SUBMITTED`.
+
+### Release and final reconciliation
+
+- The final release quote used raw XRP/USD `1,037,614`, six decimals, feed timestamp `1786191145`.
+  It required `4.818748 FXRP`, predicted a `0.481197 FXRP` client refund, and required no top-up.
+- Client transaction `0xe3b7e5c5e965a8151222ef92febd1be5fb8b5913b2080e5faa528e5b94f141ee`
+  released `4.818748 FXRP` to the freelancer and refunded `0.481197 FXRP` to the client. Their sum
+  is exactly the prior `5.299945 FXRP` lock.
+- Final FXRP balances are client `5.180252`, freelancer `4.819748`, and contract `0`. Invoice `1`
+  is `RELEASED`; active liabilities are `0`; no direct-donation surplus existed.
+- `scripts/verify-live-invoice.ts` independently consumed the receipt, retrieved every receipt,
+  decoded lifecycle events, re-read invoice and immutable state, checked historical balance
+  deltas, recomputed manifest commitments, and passed payout/refund/liability reconciliation.
+
+### Phase 4B evidence and boundary
+
+- Public receipt: `docs/LIVE_RECEIPT.md`.
+- Durable journal: `artifacts/coston2-live-invoice.json`.
+- Canonical manifests: `artifacts/live-scope-manifest.json` and
+  `artifacts/live-evidence-manifest.json`.
+- Machine receipt: `artifacts/coston2-settlement-receipt.json`.
+- The flow is Coston2-only and uses test assets. It is not production escrow, legal escrow, audited
+  software, fiat settlement, or guaranteed USD stability. The MVP still has no arbitration or
+  automatic/unilateral release.
+- The deadline was computed as 24 hours after the prepare block, but gas setup and RPC delays meant
+  the confirmed creation had `84,940` seconds (`23h 35m 40s`) remaining. Settlement completed well
+  before it; the receipt does not claim an exact 24-hour creation-to-deadline interval.
+
+### Phase 4B validation
+
+- `forge fmt --check` and `forge build --force`: passed with Solidity `0.8.25`.
+- Complete deterministic, fuzz, and invariant suite: 69 passed, zero failed, zero skipped. The six
+  fuzz properties ran 512 cases each; all six stateful invariants ran 128 runs at depth 32 with
+  zero handler reverts.
+- `npm run typecheck`: passed under the existing strict TypeScript configuration.
+- Live-flow JSON schema/status assertions and canonical-manifest checks: passed.
+- `npm run verify:live:coston2`: passed in the separate read-only process for every receipt,
+  address, invoice field, event, manifest hash, historical balance delta, price observation,
+  payout/refund equality, and final liability/balance read.
+- Exact-value scan for both owner-only wallet secrets: passed; neither value occurs in any tracked
+  or untracked repository file. No secret was printed by the scan.
+- `git diff --check`: passed.
+
+### Phase completion
+
+- Commit subject on PASS: `proof: settle live ProofPay invoice on Coston2`.
+- Next decision: `READY FOR PRODUCT INTERFACE`.
