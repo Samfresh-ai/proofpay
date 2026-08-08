@@ -4,6 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint app components lib tests e2e scripts/reconcile-interface.ts *.config.ts --max-warnings=0",
+    "test:unit": "vitest run tests/proofpay.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:live": "playwright test --config=playwright.live.config.ts",
+    "reconcile:interface:coston2": "tsx scripts/reconcile-interface.ts",
     "deploy:coston2": "tsx scripts/deploy-coston2.ts",
     "live:coston2": "tsx scripts/run-live-invoice.ts",
     "probe:flare": "tsx scripts/probe-flare.ts",
@@ -12,11 +20,21 @@
     "verify:live:coston2": "tsx scripts/verify-live-invoice.ts"
   },
   "dependencies": {
+    "next": "16.3.0",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "viem": "2.55.11"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
+    "@playwright/test": "1.62.1",
     "@types/node": "26.1.2",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.3.0",
     "tsx": "4.23.7",
-    "typescript": "7.0.2"
+    "typescript": "6.0.3",
+    "vitest": "4.1.10"
   }
 }

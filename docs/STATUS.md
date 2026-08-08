@@ -1,13 +1,15 @@
 # ProofPay durable status
 
-Updated: 2026-08-08 13:20 WAT
+Updated: 2026-08-08 22:46 WAT
 
 ## Current state
 
-- Active phase: Phase 0 through Phase 4B complete.
-- Overall decision: `PHASE_4B_PASS`; one complete Coston2 invoice settled and independently
-  verified. The next decision is the product interface.
-- Application UI: not started.
+- Active phase: Phase 0 through Phase 5A complete.
+- Overall decision: `PHASE_5A_PASS`; the live Coston2 settlement now has a validated read-only
+  invoice and receipt interface. The next decision is whether to authorize wallet actions.
+- Application UI: `/invoice/[id]` and `/receipt/1` are implemented as a read-only Next.js
+  interface with live Coston2 reconciliation, responsive screenshots, and automated accessibility
+  checks. No wallet or state-changing control exists.
 - Escrow contract: core implemented, fuzzed, statefully invariant-tested, deployed to
   Coston2, and source-verified; not audited or claimed production-ready.
 - Foundry: pinned production contract, deterministic mocks, 56 Phase 3A unit tests, seven passing
@@ -599,3 +601,107 @@ Gate: `PASS`
 
 - Commit subject on PASS: `proof: settle live ProofPay invoice on Coston2`.
 - Next decision: `READY FOR PRODUCT INTERFACE`.
+
+## Phase 5A — read-only settlement interface
+
+Gate: `PASS`
+
+### Recovery and scope boundary
+
+- Direct Codex resumed the preserved Phase 5A work at commit
+  `a2c37b453004a193f0d76f3090f851691576527c`; it did not recreate the repository or repeat
+  Phases 0–4. The recovery bundle is
+  `/home/samfresh22/proofpay-recovery/phase5a-direct-codex-20260808T154513Z`.
+- OpenClaw's gateway and liveness watchdog were stopped before implementation. Hermes was not
+  started. The existing browser service was left unchanged.
+- The completed interface remains read-only: it has no wallet connection, signature request,
+  transaction button, write client, `eth_getLogs` history scan, indexer, database, or contract
+  change.
+
+### Checkpoint 1 — direct contract reads
+
+- `/invoice/[id]` accepts canonical positive `uint256` IDs and directly reads `invoices(id)`,
+  `activeFxrpLiabilities()`, and the contract FXRP balance at one pinned Coston2 block.
+- A submitted invoice may add one read-only `quoteRelease` simulation at the same block. The result
+  is labelled `Preview quote` and `Not confirmed`; a fixture-only top-up scenario is explicitly
+  marked as not live Coston2 evidence.
+- Each public RPC request has a 15-second timeout and one retry. Missing or contradictory evidence
+  fails closed; fixture mode requires explicit test authorization and is disabled in production.
+- Unit coverage proves ID parsing, exact-byte manifest verification and tamper rejection, locator
+  identity and uniqueness, exact event shape, settlement conservation, fixture isolation, RPC
+  policy constants, current copy boundaries, and the top-up presentation data.
+
+### Checkpoint 2 — receipt-by-transaction-hash verification
+
+- `/receipt/1` treats `artifacts/coston2-settlement-receipt.json` only as a verified transaction
+  locator. It retrieves each referenced transaction, receipt, and block from Coston2 in lifecycle
+  order; no backward scan or broad event query is used.
+- Each lifecycle transaction must target the deployed ProofPay contract and contain exactly one
+  deployed-contract log that decodes to the expected event for invoice 1. Additional, malformed,
+  wrong, or contradictory contract events fail the receipt.
+- After those lifecycle events decode in order, one current pinned snapshot re-reads the invoice,
+  aggregate liabilities, contract FXRP balance, and both parties' FXRP balances. The latest receipt
+  must not be newer than that snapshot, and the release event's payout plus refund must equal the
+  confirmed historical lock.
+- Final live reconciliation passed at block `33799319`: state `RELEASED`, lock `5.299945 FXRP`,
+  payout `4.818748 FXRP`, refund `0.481197 FXRP`, active liabilities `0`, contract balance `0`,
+  client balance `5.180252 FXRP`, and freelancer balance `4.819748 FXRP`.
+
+### Checkpoint 3 — interface and route build
+
+- Added the dynamic App Router routes `/invoice/[id]` and `/receipt/[id]`, typed server-side data
+  views, loading/error/not-found documents, and same-route retry links for expected data failures.
+- The approved direction is implemented as an editorial financial document crossed with an
+  onchain settlement terminal: warm paper, dark serif hierarchy, monospaced evidence, thin rules,
+  restrained Flare red, aligned money, status stamps, a settlement rail, and native evidence
+  disclosures. It does not use dashboards, sidebars, bento grids, generic cards, gradients, or
+  decorative charts.
+- Production build passes with `/invoice/[id]` and `/receipt/[id]` server-rendered dynamically.
+
+### Checkpoint 4 — live browser reconciliation
+
+- The final live Playwright run passed both route reads using the default live adapter. It asserted
+  the parties, deadline, scope and evidence commitments, hash-verified scope/note, contract and
+  network, exact money values, FTSO prices/times, evidence URI, four transaction hashes, blocks,
+  block times, and pinned-read provenance.
+- The final live invoice screenshot records pinned block `33799377`; the receipt screenshots record
+  pinned block `33799395`. The lifecycle block times are the actual Coston2 times:
+  `12:10:16`, `12:11:59`, `12:12:21`, and `12:12:39 UTC`.
+- A temporary public-RPC failure produced the explicit read-failed document with no fixture
+  fallback. After the endpoint recovered, the final live run passed and overwrote all five required
+  evidence images.
+
+### Checkpoint 5 — final validation
+
+- `npm run typecheck`: passed.
+- `npm run lint`: passed with zero warnings.
+- `npm run test:unit`: 18 passed, zero failed.
+- `npm run build`: passed.
+- `npm run test:e2e`: 3 passed, zero failed.
+- `npm run reconcile:interface:coston2`: passed with exact event, conservation, solvency, current
+  state, and pinned party-balance checks.
+- `npm run test:e2e:live`: 2 passed, zero failed; five live screenshots captured.
+- Axe scans passed on desktop invoice, mobile invoice, desktop receipt, mobile receipt, and expanded
+  receipt evidence. Both 390-pixel routes had no horizontal overflow; the disclosure controls were
+  keyboard operated.
+- Exact wallet-secret and high-confidence secret scan: passed. Protected Phase 0–4 files were
+  unchanged. Phase 5A source contains no write client, chain-write method, or log scan.
+- `git diff --check`: passed.
+
+### Screenshots and limitations
+
+- Evidence images: `artifacts/interface/invoice-1-desktop.png`, `invoice-1-mobile.png`,
+  `receipt-1-desktop.png`, `receipt-1-mobile.png`, and
+  `receipt-1-evidence-expanded.png`. Only the live suite writes these filenames.
+- Generic historical receipt discovery remains a post-hackathon indexing concern. Only invoice 1
+  has a verified preserved transaction locator; arbitrary invoice IDs still receive direct current
+  state without an inferred receipt.
+- Numeric block pinning does not eliminate a small reorganization race. The UI has automated
+  accessibility and responsive checks, not user-research or usability-test evidence.
+- Coston2 and test FXRP are not mainnet, legal escrow, audited security, fiat settlement, or
+  production readiness. Evidence commitments prove byte integrity, not delivery truth or quality.
+
+### Phase completion
+
+- Commit subject on PASS: `feat: present live ProofPay settlement`.
+- Next decision: `READY FOR WALLET ACTIONS`.

@@ -10,3 +10,6 @@ broadcast/
 deployment/*.tmp
 artifacts/*.local.json
 *.log
+*.tsbuildinfo
+artifacts/interface/test-results/
+artifacts/interface/live-test-results/
