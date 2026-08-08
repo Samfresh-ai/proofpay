@@ -1,18 +1,20 @@
 # ProofPay durable status
 
-Updated: 2026-08-06 11:06 WAT
+Updated: 2026-08-08 11:04 WAT
 
 ## Current state
 
-- Active phase: Phase 0, Phase 1, Phase 2, Phase 3A, and Phase 3B complete.
-- Overall decision: `PHASE_3B_PASS`; the contract is ready for a separate Coston2 escrow deployment
-  decision.
+- Active phase: Phase 0, Phase 1, Phase 2, Phase 3A, Phase 3B, and Phase 4A complete.
+- Overall decision: `PHASE_4A_PASS`; the confirmed Coston2 contract is ready for a separate live
+  invoice-flow decision.
 - Application UI: not started.
-- Escrow contract: production core implemented, fuzzed, statefully invariant-tested, and reviewed;
-  not deployed or audited.
+- Escrow contract: production core implemented, fuzzed, statefully invariant-tested, deployed to
+  Coston2, and source-verified; not audited or claimed production-ready.
 - Foundry: pinned production contract, deterministic mocks, 56 Phase 3A unit tests, seven passing
   Phase 3B financial-math tests, and six passing stateful invariants.
-- Deployment: not started.
+- Deployment: `ProofPayEscrow` is confirmed at
+  `0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21` on Coston2 chain `114`; deployment and verification
+  evidence is in `deployment/coston2.json`.
 - Repository secrets: none. Disposable test-wallet secrets remain outside the repository in an owner-only local file; no secret value is recorded in project evidence.
 
 ## Phase 0 — rules, licensing, and repository setup
@@ -414,3 +416,88 @@ Gate: `PASS`
 
 - Commit subject on PASS: `test: prove ProofPay economic invariants`.
 - Next decision: `READY FOR COSTON2 ESCROW DEPLOYMENT`.
+
+## Phase 4A — Coston2 escrow deployment and verification
+
+Gate: `PASS`
+
+### Reviewed deployment intent
+
+- Reused the funded Phase 1 sender
+  `0x3c47ddC46848A7a225d3491DA5c211e2E7A51F42`; no wallet or faucet request was created.
+- The final pre-broadcast checkpoint confirmed chain ID `114`, deployer balance
+  `99.9016056 C2FLR`, zero FTSOv2 fee, and an XRP/USD observation with six decimals and age zero
+  at Coston2 block `33775779`.
+- Official discovery resolved `AssetManagerFXRP` to
+  `0xc1Ca88b937d0b528842F95d5731ffB586f4fbDFA`, its FXRP token to
+  `0x0b6A3645c240605887a5532109323A3E12273dc7`, and `FtsoV2` to
+  `0xC4e9c78EA53db782E28f28Fdf80BaF59336B304d`. The addresses matched the Phase 1 and Phase 3B
+  evidence.
+- Constructor review passed for the resolved FXRP, resolved FTSOv2, XRP/USD feed
+  `0x015852502f55534400000000000000000000000000`, and `30`-second maximum price age.
+- The reviewed Solidity `0.8.25` artifact used optimizer `200`, IR, and Cancun EVM settings.
+  Estimated gas was `1,668,280`; the padded limit was `2,001,936`; the expected maximum fee was
+  `1.3012584 C2FLR` at `650 gwei`.
+- The expected initcode hash was
+  `0x3257394695ed7a2905c62dba2bfcb5c107fa9edad5b373f01bfcd8f3ccb8a960`; a live-RPC constructor
+  simulation produced expected runtime hash
+  `0xd455d0ee1c99f901d571e25c4cf25902249097d8212d485417e7032ee3ff5338` and predicted contract
+  `0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21`.
+- `deployment/coston2.json` held this redacted intent before signing. The signed transaction hash
+  was recorded before submission and marked submitted immediately after the RPC accepted it.
+
+### Confirmed deployment
+
+- Contract: `0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21`.
+- Transaction: `0xa223570423d92e6dc972452ff00da35c2d59d5c0c4c9f3a971e7cd6dabf5f93a`.
+- Receipt: success in Coston2 block `33775801` at `2026-08-08T10:01:32.000Z`.
+- Gas: `1,653,986` at `650,000,000,000 wei`; total fee `1.0750909 C2FLR`. The deployer balance
+  change from `99.9016056` to `98.8265147 C2FLR` equals that receipt fee.
+- The creation transaction input matched the reviewed initcode hash. Deployed runtime code exists
+  and its hash exactly matches the pre-broadcast runtime hash.
+- Onchain immutable getters return the intended FXRP, FTSOv2, feed ID, and 30-second maximum age.
+  FXRP still reports six decimals.
+- Initial state is zero and solvent: active liabilities `0`, contract FXRP balance `0`, and invoice
+  `1` is empty. `quoteFunding(1)` returns the expected `InvoiceNotFound(1)` error.
+- A non-persistent live `eth_call` created a temporary `$100.000000` invoice and called the deployed
+  `quoteFunding` in one simulation. It returned protected funding of `106.259148 FXRP` at raw price
+  `1035205`, six decimals, and feed timestamp `1786183293`; independent integer math matched.
+  Re-reads proved that the simulation created no live invoice, liability, or token balance.
+- The existing deterministic mock reproduced the stale-price rejection at 31 seconds while
+  retaining the accepted 30-second boundary.
+- Explorer source verification passed with the exact compiler, optimizer, IR, EVM, constructor,
+  and creation-transaction settings preserved in `deployment/coston2.json`.
+
+Explorer evidence:
+
+- https://coston2-explorer.flare.network/tx/0xa223570423d92e6dc972452ff00da35c2d59d5c0c4c9f3a971e7cd6dabf5f93a
+- https://coston2-explorer.flare.network/address/0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21
+
+### Phase 4A validation and boundary
+
+- `forge fmt --check`: passed from the Foundry project root.
+- `forge build --force`: passed with Solidity `0.8.25`.
+- Complete deterministic, fuzz, and invariant suite: 69 passed, zero failed, zero skipped.
+- Live-RPC Foundry deployment dry run: passed before broadcast. An earlier attempt rejected its
+  current FTSO observation as invalid; it wrote no intent, signed no transaction, and sent
+  nothing. The fresh final checkpoint and broadcast preflight both passed.
+- Post-deployment bytecode, constructor, accounting, invalid-invoice, live-quote, and mock-stale
+  checks: passed.
+- `npm run typecheck`, repository secret scan, and `git diff --check`: passed.
+- No invoice, FXRP escrow, evidence, funding, top-up, release, refund, or faucet transaction was
+  sent in Phase 4A.
+- Source verification is separate from deployment integrity; both passed in this phase.
+
+### Remaining limitations
+
+- Coston2 is a test network. This deployment is not an audit or a production-readiness claim.
+- A submitted invoice still has no arbitration, timeout refund, automatic release, or unilateral
+  freelancer release; a refusing client can leave FXRP locked indefinitely.
+- Evidence binds bytes and a retrieval URI but does not prove truth or quality. A future nonzero
+  FTSOv2 fee fails closed and requires an architecture revision. Direct FXRP donations remain
+  stranded.
+
+### Phase completion
+
+- Commit subject on PASS: `deploy: publish ProofPay escrow on Coston2`.
+- Next decision: `READY FOR LIVE INVOICE FLOW`.

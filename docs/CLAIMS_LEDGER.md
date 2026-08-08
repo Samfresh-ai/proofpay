@@ -1,6 +1,6 @@
 # Claims ledger
 
-Last updated: 2026-08-06
+Last updated: 2026-08-08
 
 Statuses: `PROVED`, `PARTIAL`, `INFERRED`, `PLANNED`, `FALSE`.
 
@@ -28,4 +28,7 @@ Statuses: `PROVED`, `PARTIAL`, `INFERRED`, `PLANNED`, `FALSE`.
 | PROD-006 | ProofPay automatically releases FXRP after the freelancer submits evidence. | FALSE | The named client must call release; the Phase 2 architecture honestly records that the client can refuse. |
 | PROD-007 | ProofPay enforces the locked six-state invoice lifecycle and freelancer/client authorities. | PROVED | Deterministic lifecycle tests plus a 14-action stateful handler exercise allowed, repeated, invalid, terminal, and unauthorized sequences; ghost records preserve terms, evidence, and terminal states. |
 | PROD-008 | Active ProofPay FXRP liabilities cannot be cross-subsidized by another invoice or a direct donation during settlement. | PROVED | Deterministic multi-invoice tests and stateful invariants keep aggregate liabilities equal to active locks, never above balance, while direct donations remain exact non-liability surplus. |
-| DEPLOY-001 | A ProofPay contract is deployed on Coston2. | PLANNED | The production core now exists locally, but Phase 3A explicitly excluded deployment. No contract address or live escrow transaction is claimed. |
+| DEPLOY-001 | A ProofPay contract is deployed on Coston2. | PROVED | `ProofPayEscrow` is confirmed at `0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21` in successful chain-114 transaction `0xa223570423d92e6dc972452ff00da35c2d59d5c0c4c9f3a971e7cd6dabf5f93a`; receipt and explorer links are preserved in `deployment/coston2.json`. |
+| DEPLOY-002 | The Coston2 deployment matches the reviewed local build and constructor configuration. | PROVED | The confirmed creation input matches the reviewed initcode hash; deployed runtime hash `0xd455d0ee1c99f901d571e25c4cf25902249097d8212d485417e7032ee3ff5338` matches the live-RPC constructor simulation; immutable getters match the officially resolved FXRP, FTSOv2, verified XRP/USD feed ID, and 30-second age limit. |
+| DEPLOY-003 | The deployed escrow began with no invoice or FXRP liability. | PROVED | Post-deployment reads show `activeFxrpLiabilities == 0`, FXRP balance `0`, an empty first invoice slot, and `InvoiceNotFound(1)` from an invalid quote lookup. A `$100` live quote simulation used `eth_call` only and left those values unchanged. |
+| DEPLOY-004 | The deployed Coston2 source is reproducibly verified on the explorer. | PROVED | Blockscout verification passed for Solidity `0.8.25`, optimizer `200`, IR, Cancun EVM, exact constructor arguments, and the recorded creation transaction; the full command and response are in `deployment/coston2.json`. |

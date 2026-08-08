@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "deploy:coston2": "tsx scripts/deploy-coston2.ts",
     "probe:flare": "tsx scripts/probe-flare.ts",
     "probe:ftso-tolerance": "tsx scripts/sample-ftso-tolerance.ts",
     "typecheck": "tsc --noEmit"

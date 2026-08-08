@@ -7,6 +7,6 @@ out/
 coverage/
 cache/
 broadcast/
+deployment/*.tmp
 artifacts/*.local.json
 *.log
-

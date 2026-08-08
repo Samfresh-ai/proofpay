@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "phase": "4A",
+  "status": "DEPLOYED_VERIFIED",
+  "network": {
+    "name": "Flare Testnet Coston2",
+    "chainId": 114,
+    "rpc": {
+      "classification": "official-public-rpc",
+      "url": "https://coston2-api.flare.network/ext/C/rpc",
+      "embedsSecrets": false
+    }
+  },
+  "deployer": {
+    "address": "0x3c47ddC46848A7a225d3491DA5c211e2E7A51F42",
+    "balanceBeforeWei": "99901605600000000000",
+    "balanceBeforeC2flr": "99.9016056",
+    "balanceAfterWei": "98826514700000000000",
+    "balanceAfterC2flr": "98.8265147"
+  },
+  "dependencies": {
+    "registryAddress": "0xaD67FE66660Fb8dFE9d6b1b4240d8650e30F6019",
+    "assetManagerAddress": "0xc1Ca88b937d0b528842F95d5731ffB586f4fbDFA",
+    "fxrpAddress": "0x0b6A3645c240605887a5532109323A3E12273dc7",
+    "fxrpDecimals": 6,
+    "ftsoV2Address": "0xC4e9c78EA53db782E28f28Fdf80BaF59336B304d",
+    "xrpUsdFeedId": "0x015852502f55534400000000000000000000000000",
+    "maximumPriceAgeSeconds": 30,
+    "currentFtsoFeeWei": "0",
+    "preflightFeed": {
+      "value": "1035080",
+      "decimals": 6,
+      "timestamp": "1786183258",
+      "timestampIso": "2026-08-08T10:00:58.000Z",
+      "ageSecondsAtLatestBlock": 0,
+      "latestBlock": "33775779"
+    }
+  },
+  "compiler": {
+    "version": "0.8.25+commit.b61c2a91",
+    "optimizerEnabled": true,
+    "optimizerRuns": 200,
+    "viaIr": true,
+    "evmVersion": "cancun"
+  },
+  "intent": {
+    "checkpointedAt": "2026-08-08T10:01:30.541Z",
+    "reviewStatus": "PASS",
+    "reviewedAgainst": {
+      "contractSpec": "PASS",
+      "phaseOneProbe": "MATCH",
+      "phaseThreeBLiveFtso": "PASS"
+    },
+    "constructorArguments": {
+      "fxrp": "0x0b6A3645c240605887a5532109323A3E12273dc7",
+      "ftsoV2": "0xC4e9c78EA53db782E28f28Fdf80BaF59336B304d",
+      "xrpUsdFeedId": "0x015852502f55534400000000000000000000000000",
+      "maximumPriceAgeSeconds": 30
+    },
+    "gitCommit": "9a320915551805459002b5c4d1e31c8063c7e430",
+    "expectedCreationBytecodeHash": "0x3257394695ed7a2905c62dba2bfcb5c107fa9edad5b373f01bfcd8f3ccb8a960",
+    "expectedRuntimeBytecodeHash": "0xd455d0ee1c99f901d571e25c4cf25902249097d8212d485417e7032ee3ff5338",
+    "estimatedGas": "1668280",
+    "gasLimit": "2001936",
+    "gasPriceWei": "650000000000",
+    "expectedMaximumFeeWei": "1301258400000000000",
+    "expectedMaximumFeeC2flr": "1.3012584",
+    "deployerNonce": "1",
+    "expectedContractAddress": "0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21",
+    "foundryDryRun": {
+      "command": "/home/samfresh22/.foundry/bin/forge script script/DeployProofPay.s.sol:DeployProofPay --rpc-url https://coston2-api.flare.network/ext/C/rpc --sender 0x3c47ddC46848A7a225d3491DA5c211e2E7A51F42 --legacy --color never",
+      "workingDirectory": "/home/samfresh22/openclaw-grower-workspace/proofpay/contracts",
+      "exitCode": 0,
+      "stdout": "No files changed, compilation skipped\nScript ran successfully.\n\n== Return ==\nescrow: contract ProofPayEscrow 0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21\n\n## Setting up 1 EVM.\n\n==========================\n\nChain 114\n\nEstimated gas price: 650 gwei\n\nEstimated total gas used for script: 2150181\n\nEstimated amount required: 1.39761765 C2FLR\n\n==========================\n\nSIMULATION COMPLETE. To broadcast these transactions, add --broadcast and wallet configuration(s) to the previous command. See forge script --help for more.\n\nTransactions saved to: /home/samfresh22/openclaw-grower-workspace/proofpay/contracts/broadcast/DeployProofPay.s.sol/114/dry-run/run-latest.json\n\nSensitive values saved to: /home/samfresh22/openclaw-grower-workspace/proofpay/contracts/cache/DeployProofPay.s.sol/114/dry-run/run-latest.json\n\n",
+      "stderr": "Warning: EIP-3855 is not supported in one or more of the RPCs used.\nUnsupported Chain IDs: 114.\nContracts deployed with a Solidity version equal or higher than 0.8.20 might not work properly.\nFor more information, please see https://eips.ethereum.org/EIPS/eip-3855\n"
+    }
+  },
+  "deployment": {
+    "plannedTransactionHash": "0xa223570423d92e6dc972452ff00da35c2d59d5c0c4c9f3a971e7cd6dabf5f93a",
+    "transactionHash": "0xa223570423d92e6dc972452ff00da35c2d59d5c0c4c9f3a971e7cd6dabf5f93a",
+    "submittedAt": "2026-08-08T10:01:32.603Z",
+    "contractAddress": "0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21",
+    "blockNumber": "33775801",
+    "gasUsed": "1653986",
+    "effectiveGasPriceWei": "650000000000",
+    "totalFeeWei": "1075090900000000000",
+    "totalFeeC2flr": "1.0750909",
+    "timestamp": "1786183292",
+    "timestampIso": "2026-08-08T10:01:32.000Z",
+    "gitCommit": "9a320915551805459002b5c4d1e31c8063c7e430"
+  },
+  "bytecodeVerification": {
+    "status": "PASS",
+    "expectedRuntimeBytecodeHash": "0xd455d0ee1c99f901d571e25c4cf25902249097d8212d485417e7032ee3ff5338",
+    "deployedRuntimeBytecodeHash": "0xd455d0ee1c99f901d571e25c4cf25902249097d8212d485417e7032ee3ff5338",
+    "creationTransactionInputHash": "0x3257394695ed7a2905c62dba2bfcb5c107fa9edad5b373f01bfcd8f3ccb8a960"
+  },
+  "postDeployment": {
+    "chainId": 114,
+    "receiptStatus": "success",
+    "constructorDependenciesMatch": true,
+    "fxrpDecimals": 6,
+    "activeFxrpLiabilities": "0",
+    "firstInvoiceSlotEmpty": true,
+    "invoiceCount": "0",
+    "invoiceCountEvidence": "invoices(1).freelancer is zero and quoteFunding(1) returns InvoiceNotFound(1)",
+    "contractFxrpBalance": "0",
+    "solvent": true,
+    "quoteSimulation": {
+      "status": "PASS",
+      "method": "non-persistent eth_call contract creation",
+      "usdTargetAtomic": "100000000",
+      "requiredFundingFxrpAtomic": "106259148",
+      "price": "1035205",
+      "priceDecimals": 6,
+      "priceTimestamp": "1786183293",
+      "independentMathMatch": true,
+      "persistentStateChanged": false
+    },
+    "stalePriceSimulation": {
+      "status": "PASS",
+      "environment": "existing deterministic mock",
+      "command": "forge test --match-test testQuoteFundingAcceptsFreshnessEqualityAndRejectsOneSecondOlder -vv --color never"
+    },
+    "invalidInvoiceLookup": {
+      "status": "PASS",
+      "invoiceId": "1",
+      "expectedErrorData": "0x5e48bf380000000000000000000000000000000000000000000000000000000000000001",
+      "observedErrorData": "0x5e48bf380000000000000000000000000000000000000000000000000000000000000001"
+    }
+  },
+  "explorer": {
+    "transaction": "https://coston2-explorer.flare.network/tx/0xa223570423d92e6dc972452ff00da35c2d59d5c0c4c9f3a971e7cd6dabf5f93a",
+    "contract": "https://coston2-explorer.flare.network/address/0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21"
+  },
+  "sourceVerification": {
+    "status": "VERIFIED",
+    "failureClass": null,
+    "attemptedAt": "2026-08-08T10:02:51.120Z",
+    "command": "/home/samfresh22/.foundry/bin/forge verify-contract 0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21 src/ProofPayEscrow.sol:ProofPayEscrow --chain-id 114 --compiler-version 0.8.25 --num-of-optimizations 200 --via-ir --evm-version cancun --constructor-args 0x0000000000000000000000000b6a3645c240605887a5532109323a3e12273dc7000000000000000000000000c4e9c78ea53db782e28f28fdf80baf59336b304d015852502f555344000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001e --creation-transaction-hash 0xa223570423d92e6dc972452ff00da35c2d59d5c0c4c9f3a971e7cd6dabf5f93a --verifier blockscout --verifier-url https://coston2-explorer.flare.network/api/ --watch --color never",
+    "workingDirectory": "/home/samfresh22/openclaw-grower-workspace/proofpay/contracts",
+    "exitCode": 0,
+    "response": "Start verifying contract `0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21` deployed on flare-coston2\nEVM version: cancun\nCompiler version: 0.8.25\nOptimizations:    200\nConstructor args: 0x0000000000000000000000000b6a3645c240605887a5532109323a3e12273dc7000000000000000000000000c4e9c78ea53db782e28f28fdf80baf59336b304d015852502f555344000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001e\n\nSubmitting verification for [src/ProofPayEscrow.sol:ProofPayEscrow] 0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21.\nSubmitted contract for verification:\n\tResponse: `OK`\n\tGUID: `53be2d49f4bfcf2cc04a225ccb7398fb5e5eaa216a76febb`\n\tURL: https://coston2-explorer.flare.network/address/0x53be2d49f4bfcf2cc04a225ccb7398fb5e5eaa21\nContract verification status:\nResponse: `OK`\nDetails: `Pending in queue`\nContract verification status:\nResponse: `OK`\nDetails: `Pass - Verified`\nContract successfully verified\nWarning: Verification is still pending...; waiting 15 seconds before trying again (7 tries remaining)"
+  },
+  "guardrails": {
+    "invoiceTransactionSent": false,
+    "fxrpEscrowActionSent": false,
+    "faucetRequested": false,
+    "walletCreated": false
+  }
+}
