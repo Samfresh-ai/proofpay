@@ -32,6 +32,24 @@ export const proofPayTransactionActions = [
 
 export type ProofPayTransactionAction = (typeof proofPayTransactionActions)[number];
 
+export interface TopUpQuoteIdentity {
+  lockedFxrpAtomic: string;
+  requiredTopUpAtomic: string;
+  acceptedMaximumAtomic: string;
+  quoteDeadline: string;
+  priceAtomic: string;
+  priceDecimals: number;
+  priceTimestamp: string;
+}
+
+export interface TopUpIntentIdentity extends TopUpQuoteIdentity {
+  chainId: number;
+  contract: string;
+  invoiceId: string;
+  account: string;
+  action: ProofPayTransactionAction;
+}
+
 export interface TransactionIntent {
   action: ProofPayTransactionAction;
   actionLabel: string;
@@ -52,6 +70,7 @@ export interface TransactionIntent {
   changeBeforeConfirmation: string;
   completionProof: string;
   expectedResult: string;
+  topUpQuote: TopUpQuoteIdentity | null;
   intentHash: Hash;
 }
 
@@ -66,6 +85,7 @@ export interface FundingPlan {
 }
 
 export interface ReleaseQuote {
+  lockedFxrp: bigint;
   payoutFxrp: bigint;
   refundFxrp: bigint;
   topUpFxrp: bigint;
@@ -73,6 +93,12 @@ export interface ReleaseQuote {
   priceDecimals: number;
   priceTimestamp: bigint;
 }
+
+export type TransactionIntentInvalidationReason =
+  | "account_changed"
+  | "chain_changed"
+  | "contract_changed"
+  | "invoice_changed";
 
 export function ceilDiv(numerator: bigint, denominator: bigint): bigint {
   if (numerator < 0n || denominator <= 0n) throw new RangeError("ceilDiv requires nonnegative input and a positive denominator");
@@ -143,6 +169,10 @@ export function formatQuoteTimestamp(value: bigint): string {
   return new Date(Number(value) * 1_000).toISOString();
 }
 
+export function hashTopUpIntentIdentity(identity: TopUpIntentIdentity): Hash {
+  return keccak256(toHex(canonicalJson(identity)));
+}
+
 export function buildTransactionIntent(
   input: Omit<
     TransactionIntent,
@@ -154,14 +184,30 @@ export function buildTransactionIntent(
     | "contractDeadline"
     | "changeBeforeConfirmation"
     | "completionProof"
+    | "topUpQuote"
   > & {
     contract?: Address;
     recipientDisplay?: string;
     contractDeadline?: string | null;
     changeBeforeConfirmation?: string;
     completionProof?: string;
+    topUpQuote?: TopUpQuoteIdentity | null;
   },
 ): TransactionIntent {
+  const topUpQuote = input.topUpQuote ?? null;
+  if (input.action === "top_up" && topUpQuote === null) {
+    throw new Error("A top-up intent requires its exact quote identity.");
+  }
+  if (input.action !== "top_up" && topUpQuote !== null) {
+    throw new Error("Only a top-up intent may include a top-up quote identity.");
+  }
+  if (topUpQuote && (
+    input.amountAtomic !== topUpQuote.requiredTopUpAtomic
+    || input.maximumAtomic !== topUpQuote.acceptedMaximumAtomic
+    || input.quoteDeadline !== topUpQuote.quoteDeadline
+  )) {
+    throw new Error("The top-up transaction amounts must match its exact quote identity.");
+  }
   const payload = {
     account: input.account,
     action: input.action,
@@ -184,10 +230,22 @@ export function buildTransactionIntent(
     recipientDisplay: input.recipientDisplay ?? "No token recipient",
     token: input.token,
     tokenAddress: input.tokenAddress,
+    ...(topUpQuote ? { topUpQuote } : {}),
   };
+  const intentHash = topUpQuote
+    ? hashTopUpIntentIdentity({
+      chainId: payload.chainId,
+      contract: payload.contract,
+      invoiceId: payload.invoiceId,
+      account: payload.account,
+      action: payload.action,
+      ...topUpQuote,
+    })
+    : keccak256(toHex(canonicalJson(payload)));
   return {
     ...payload,
-    intentHash: keccak256(toHex(canonicalJson(payload))),
+    topUpQuote,
+    intentHash,
   };
 }
 
@@ -245,10 +303,27 @@ export function buildFundingIntent(input: {
 export function buildTopUpIntent(input: {
   account: Address;
   invoiceId: bigint;
+  lockedFxrp: bigint;
   shortfallFxrp: bigint;
   maximumFxrp: bigint;
   quoteDeadline: bigint;
+  price: bigint;
+  priceDecimals: number;
+  priceTimestamp: bigint;
 }): TransactionIntent {
+  if (input.invoiceId <= 0n) throw new RangeError("Top-up intent requires a positive invoice ID.");
+  if (input.lockedFxrp < 0n || input.shortfallFxrp <= 0n) {
+    throw new RangeError("Top-up intent requires a nonnegative lock and a positive shortfall.");
+  }
+  if (input.maximumFxrp < input.shortfallFxrp) {
+    throw new RangeError("Top-up intent maximum cannot be below the quoted shortfall.");
+  }
+  if (input.quoteDeadline <= 0n || input.price <= 0n || input.priceTimestamp <= 0n) {
+    throw new RangeError("Top-up intent requires a complete live quote observation.");
+  }
+  if (!Number.isInteger(input.priceDecimals) || input.priceDecimals < 0 || input.priceDecimals > 18) {
+    throw new RangeError("Top-up quote decimals must be between zero and eighteen.");
+  }
   return buildTransactionIntent({
     action: "top_up",
     actionLabel: `Top up ${formatFxrpAmount(input.shortfallFxrp)} before payment can be released`,
@@ -261,11 +336,38 @@ export function buildTopUpIntent(input: {
     quoteDeadline: input.quoteDeadline.toString(),
     maximumAtomic: input.maximumFxrp.toString(),
     maximumDisplay: formatFxrpAmount(input.maximumFxrp),
+    topUpQuote: {
+      lockedFxrpAtomic: input.lockedFxrp.toString(),
+      requiredTopUpAtomic: input.shortfallFxrp.toString(),
+      acceptedMaximumAtomic: input.maximumFxrp.toString(),
+      quoteDeadline: input.quoteDeadline.toString(),
+      priceAtomic: input.price.toString(),
+      priceDecimals: input.priceDecimals,
+      priceTimestamp: input.priceTimestamp.toString(),
+    },
     expectedResult: "Increase the stored FXRP lock by only the current shortfall. Nothing is released.",
     recipientDisplay: "ProofPay escrow contract",
     changeBeforeConfirmation: "The contract may pull less than the accepted maximum if the shortfall falls. It cannot pull more.",
     completionProof: "A successful top-up receipt and the increased onchain FXRP lock.",
   });
+}
+
+export function transactionIntentInvalidationReason(
+  intent: TransactionIntent,
+  context: {
+    account: string | null;
+    chainId: number | undefined;
+    contract: string;
+    invoiceId: bigint | string;
+  },
+): TransactionIntentInvalidationReason | null {
+  if (!context.account || intent.account.toLowerCase() !== context.account.toLowerCase()) {
+    return "account_changed";
+  }
+  if (intent.chainId !== context.chainId) return "chain_changed";
+  if (intent.contract.toLowerCase() !== context.contract.toLowerCase()) return "contract_changed";
+  if (intent.invoiceId !== context.invoiceId.toString()) return "invoice_changed";
+  return null;
 }
 
 export function buildReleaseIntent(input: {
@@ -318,14 +420,17 @@ function extractErrorCode(error: unknown, depth = 0): number | null {
   return null;
 }
 
+export function isExplicitWalletRejection(error: unknown): boolean {
+  return extractErrorCode(error) === 4001;
+}
+
 function argumentAt(args: readonly unknown[] | undefined, index: number): bigint | null {
   const value = args?.[index];
   return typeof value === "bigint" ? value : null;
 }
 
 export function decodeProofPayError(error: unknown): string {
-  const code = extractErrorCode(error);
-  if (code === 4001) return "Wallet request rejected. Nothing was submitted.";
+  if (isExplicitWalletRejection(error)) return "Wallet request rejected. Nothing was submitted.";
 
   const data = extractRevertData(error);
   if (!data) return "The simulation failed. Refresh the milestone state and try again.";

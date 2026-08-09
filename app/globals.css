@@ -796,7 +796,11 @@ summary {
   color: var(--ink);
 }
 
-.transaction-button:hover:not(:disabled),
+.transaction-button:hover:not(:disabled) {
+  border-color: var(--flare);
+  color: var(--paper);
+}
+
 .quiet-button:hover:not(:disabled) {
   border-color: var(--flare);
   color: var(--flare-dark);

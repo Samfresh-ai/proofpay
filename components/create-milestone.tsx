@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { getAddress, parseUnits, type Hash } from "viem";
 
 import { buildScopeManifest, type CanonicalManifest, type ScopeManifest } from "@/lib/proofpay-manifests";
@@ -18,6 +18,7 @@ import {
   buildTransactionIntent,
   decodeProofPayError,
   formatUsdAmount,
+  isExplicitWalletRejection,
   type TransactionIntent,
 } from "@/lib/transaction-intents";
 import type { JournalStatus } from "@/lib/transaction-journal";
@@ -43,6 +44,7 @@ interface PreparedCreate {
 export function CreateMilestoneWorkspace() {
   const router = useRouter();
   const hydrated = useHydrated();
+  const signingIntentRef = useRef<Hash | null>(null);
   const wallet = useProofPayWallet();
   const journal = useTransactionJournal(wallet.actionClient);
   const [locateId, setLocateId] = useState("");
@@ -142,7 +144,13 @@ export function CreateMilestoneWorkspace() {
         changeBeforeConfirmation: "The absolute deadline and scope commitment are frozen. A changed invoice count or wallet context invalidates the intent.",
         completionProof: "An InvoiceCreated event and the stored invoice terms at the deployed ProofPay escrow contract.",
       });
-      const blocking = journal.blocking({ account, invoiceId: intent.invoiceId, action: "create" });
+      const blocking = journal.blocking({
+        chainId: intent.chainId,
+        contract: intent.contract,
+        account,
+        invoiceId: intent.invoiceId,
+        action: "create",
+      });
       if (blocking) {
         throw new Error(`A ${blocking.status} create intent already exists for predicted invoice ${intent.invoiceId}. Reconcile or abandon it before preparing another.`);
       }
@@ -165,7 +173,7 @@ export function CreateMilestoneWorkspace() {
   };
 
   const signPrepared = async () => {
-    if (!prepared) return;
+    if (!prepared || signingIntentRef.current !== null) return;
     if (
       wallet.chainState !== "ready"
       || !wallet.account
@@ -175,21 +183,58 @@ export function CreateMilestoneWorkspace() {
       setPrepared({ ...prepared, error: "Reconnect the same Coston2 account before signing this intent." });
       return;
     }
-    journal.transition(prepared.intent.intentHash, "awaiting_wallet");
-    setPrepared({ ...prepared, status: "awaiting_wallet", error: null });
+    signingIntentRef.current = prepared.intent.intentHash;
     let hash: Hash | null = null;
+    let walletRequestOpened = false;
     try {
+      journal.beginWallet(prepared.intent.intentHash);
+      walletRequestOpened = true;
+      setPrepared({ ...prepared, status: "awaiting_wallet", error: null });
       hash = await prepared.send();
       journal.transition(prepared.intent.intentHash, "submitted", hash);
       setPrepared({ ...prepared, status: "submitted", transactionHash: hash, error: null });
       const receipt = await wallet.actionClient.waitForTransactionReceipt({ hash, confirmations: 1, timeout: 120_000 });
       const status = receipt.status === "success" ? "confirmed" : "reverted";
-      journal.transition(prepared.intent.intentHash, status, hash);
+      const currentEntry = journal.currentEntry(prepared.intent.intentHash);
+      if (currentEntry?.status === "submitted") {
+        journal.transition(prepared.intent.intentHash, status, hash);
+      } else if (
+        currentEntry?.status !== status
+        || currentEntry.transactionHash?.toLowerCase() !== hash.toLowerCase()
+      ) {
+        throw new Error("The reconciled journal receipt no longer matches this wallet result.");
+      }
       setPrepared({ ...prepared, status, transactionHash: hash, error: null });
     } catch (error) {
       if (hash === null) {
-        journal.transition(prepared.intent.intentHash, "prepared", null);
-        setPrepared({ ...prepared, status: "prepared", error: decodeProofPayError(error) });
+        const journalEntry = journal.currentEntry(prepared.intent.intentHash);
+        if (walletRequestOpened && journalEntry?.status === "awaiting_wallet") {
+          if (isExplicitWalletRejection(error)) {
+            journal.transition(prepared.intent.intentHash, "prepared", null);
+            setPrepared({
+              ...prepared,
+              status: "prepared",
+              transactionHash: null,
+              error: decodeProofPayError(error),
+            });
+          } else {
+            setPrepared({
+              ...prepared,
+              status: "awaiting_wallet",
+              transactionHash: null,
+              error: "The wallet returned no transaction hash, so ProofPay cannot prove whether it broadcast. This intent remains blocked in this browser and cannot be signed again.",
+            });
+          }
+        } else if (journalEntry && journalEntry.status !== "abandoned") {
+          setPrepared({
+            ...prepared,
+            status: journalEntry.status,
+            transactionHash: journalEntry.transactionHash,
+            error: decodeProofPayError(error),
+          });
+        } else {
+          setPrepared({ ...prepared, status: "prepared", transactionHash: null, error: decodeProofPayError(error) });
+        }
       } else {
         setPrepared({
           ...prepared,
@@ -198,11 +243,16 @@ export function CreateMilestoneWorkspace() {
           error: "The transaction hash is stored, but its receipt could not be read yet. Reload to reconcile it before trying again.",
         });
       }
+    } finally {
+      if (signingIntentRef.current === prepared.intent.intentHash) {
+        signingIntentRef.current = null;
+      }
     }
   };
 
   const abandonPrepared = () => {
-    if (!prepared || prepared.status !== "prepared") return;
+    if (!prepared || prepared.status !== "prepared" || signingIntentRef.current !== null) return;
+    if (journal.currentEntry(prepared.intent.intentHash)?.status !== "prepared") return;
     journal.abandon(prepared.intent.intentHash);
     setPrepared(null);
   };

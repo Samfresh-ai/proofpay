@@ -10,10 +10,12 @@ import {
   buildReleaseIntent,
   buildTopUpIntent,
   decodeProofPayError,
+  isExplicitWalletRejection,
   transactionStateCopy,
 } from "../lib/transaction-intents.js";
 import {
   abandonPreparedIntent,
+  beginWalletRequest,
   findBlockingJournalEntry,
   journalEntryFromIntent,
   loadJournal,
@@ -113,8 +115,9 @@ describe("ProofPay Phase 5B1 amounts, manifests, and copy", () => {
       requiredFxrp: 5_500_000n, maximumFxrp: 5_610_000n, quoteDeadline: 2_000n,
     });
     const topUp = buildTopUpIntent({
-      account: CLIENT, invoiceId: 6n, shortfallFxrp: 1_000_000n,
-      maximumFxrp: 1_020_000n, quoteDeadline: 2_000n,
+      account: CLIENT, invoiceId: 6n, lockedFxrp: 4_000_000n,
+      shortfallFxrp: 1_000_000n, maximumFxrp: 1_020_000n, quoteDeadline: 2_000n,
+      price: 1_000_000n, priceDecimals: 6, priceTimestamp: 1_900n,
     });
     const release = buildReleaseIntent({
       account: CLIENT, invoiceId: 7n, payoutFxrp: 5_000_000n,
@@ -156,6 +159,9 @@ describe("ProofPay Phase 5B1 amounts, manifests, and copy", () => {
   });
 
   it("maps wallet rejection and custom contract errors to specific product copy", () => {
+    expect(isExplicitWalletRejection({ code: 4001 })).toBe(true);
+    expect(isExplicitWalletRejection({ cause: { cause: { code: 4001 } } })).toBe(true);
+    expect(isExplicitWalletRejection(new Error("Provider disconnected before returning a hash."))).toBe(false);
     expect(decodeProofPayError({ code: 4001 })).toBe("Wallet request rejected. Nothing was submitted.");
     expect(decodeProofPayError({ cause: { cause: { code: 4001 } } })).toBe(
       "Wallet request rejected. Nothing was submitted.",
@@ -170,7 +176,7 @@ describe("ProofPay Phase 5B1 amounts, manifests, and copy", () => {
 });
 
 describe("ProofPay Phase 5B1 browser-local journal", () => {
-  it("persists, validates, downgrades an interrupted wallet prompt, and blocks duplicates", () => {
+  it("persists and fail-closes an interrupted wallet prompt instead of making it signable again", () => {
     const storage = new MemoryStorage();
     const intent = buildFundingIntent({
       account: CLIENT, invoiceId: 3n, usdTargetAtomic: 5_000_000n,
@@ -182,11 +188,13 @@ describe("ProofPay Phase 5B1 browser-local journal", () => {
     });
     saveJournal(storage, awaiting);
     const reloaded = loadJournal(storage);
-    expect(reloaded[0]?.status).toBe("prepared");
-    expect(findBlockingJournalEntry(reloaded, { account: CLIENT, invoiceId: "3", action: "fund" })).not.toBeNull();
+    expect(reloaded[0]?.status).toBe("awaiting_wallet");
+    expect(findBlockingJournalEntry(reloaded, {
+      chainId: PROOFPAY_CHAIN_ID, contract: PROOFPAY_CONTRACT_ADDRESS,
+      account: CLIENT, invoiceId: "3", action: "fund",
+    })).not.toBeNull();
     expect(storage.getItem(PROOFPAY_JOURNAL_KEY)).not.toContain("private");
-    const abandoned = abandonPreparedIntent(reloaded, intent.intentHash);
-    expect(findBlockingJournalEntry(abandoned, { account: CLIENT, invoiceId: "3", action: "fund" })).toBeNull();
+    expect(() => abandonPreparedIntent(reloaded, intent.intentHash)).toThrow(/Only an unsigned prepared intent/u);
   });
 
   it("reconciles a submitted receipt exactly once and preserves its transaction hash", async () => {
@@ -195,7 +203,8 @@ describe("ProofPay Phase 5B1 browser-local journal", () => {
       requiredFxrp: 5_500_000n, maximumFxrp: 5_610_000n, quoteDeadline: 2_000n,
     });
     const prepared = journalEntryFromIntent(intent, new Date("2026-08-09T10:00:00Z"));
-    const submitted = transitionJournalEntry([prepared], intent.intentHash, "submitted", {
+    const awaiting = beginWalletRequest([prepared], intent.intentHash);
+    const submitted = transitionJournalEntry(awaiting, intent.intentHash, "submitted", {
       transactionHash: TX_HASH,
       now: new Date("2026-08-09T10:00:01Z"),
     });
@@ -207,7 +216,10 @@ describe("ProofPay Phase 5B1 browser-local journal", () => {
     }, new Date("2026-08-09T10:00:02Z"));
     expect(calls).toBe(1);
     expect(confirmed[0]).toMatchObject({ status: "confirmed", transactionHash: TX_HASH });
-    expect(findBlockingJournalEntry(confirmed, { account: CLIENT, invoiceId: "3", action: "fund" })).not.toBeNull();
+    expect(findBlockingJournalEntry(confirmed, {
+      chainId: PROOFPAY_CHAIN_ID, contract: PROOFPAY_CONTRACT_ADDRESS,
+      account: CLIENT, invoiceId: "3", action: "fund",
+    })).not.toBeNull();
   });
 
   it("allows a fresh exact approval after an earlier approval confirmed", () => {
@@ -216,14 +228,21 @@ describe("ProofPay Phase 5B1 browser-local journal", () => {
       invoiceId: 3n,
       maximumFxrp: 5_610_000n,
     }));
-    const confirmed = transitionJournalEntry([approval], approval.intentHash, "confirmed", {
+    const awaiting = beginWalletRequest([approval], approval.intentHash);
+    const submitted = transitionJournalEntry(awaiting, approval.intentHash, "submitted", {
       transactionHash: TX_HASH,
     });
-    expect(findBlockingJournalEntry(confirmed, { account: CLIENT, invoiceId: "3", action: "approve" })).toBeNull();
-    const submitted = transitionJournalEntry([approval], approval.intentHash, "submitted", {
+    const confirmed = transitionJournalEntry(submitted, approval.intentHash, "confirmed", {
       transactionHash: TX_HASH,
     });
-    expect(findBlockingJournalEntry(submitted, { account: CLIENT, invoiceId: "3", action: "approve" })).not.toBeNull();
+    expect(findBlockingJournalEntry(confirmed, {
+      chainId: PROOFPAY_CHAIN_ID, contract: PROOFPAY_CONTRACT_ADDRESS,
+      account: CLIENT, invoiceId: "3", action: "approve",
+    })).toBeNull();
+    expect(findBlockingJournalEntry(submitted, {
+      chainId: PROOFPAY_CHAIN_ID, contract: PROOFPAY_CONTRACT_ADDRESS,
+      account: CLIENT, invoiceId: "3", action: "approve",
+    })).not.toBeNull();
   });
 
   it("drops malformed and cross-contract journal records", () => {

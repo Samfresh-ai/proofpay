@@ -53,6 +53,11 @@ const results = {
     functionName: "quoteRelease",
     result: [5_000_000n, 0n, 1_000_000n, 1_000_000n, 6, 1_900_000_000n],
   }),
+  quoteReleaseTopUpLater: encodeFunctionResult({
+    abi: proofPayAbi,
+    functionName: "quoteRelease",
+    result: [5_500_000n, 0n, 1_500_000n, 900_000n, 6, 1_900_000_010n],
+  }),
   quoteReleaseReady: encodeFunctionResult({
     abi: proofPayAbi,
     functionName: "quoteRelease",
@@ -64,7 +69,9 @@ const results = {
 type WalletOptions = {
   account: string;
   allowance?: string;
+  ambiguousNextSend?: boolean;
   chainId?: number;
+  receiptPending?: boolean;
   rejectNextSend?: boolean;
 };
 
@@ -74,10 +81,14 @@ async function installInjectedWallet(page: Page, options: WalletOptions) {
     const state = {
       account: wallet.account,
       allowance: wallet.allowance ?? "999999999",
+      ambiguousNextSend: wallet.ambiguousNextSend ?? false,
       chainId: wallet.chainId ?? 114,
       connected: false,
+      receiptPending: wallet.receiptPending ?? false,
       rejectNextSend: wallet.rejectNextSend ?? false,
+      topUpQuoteIndex: 0,
       requests: [] as Array<{ method: string; params?: unknown }>,
+      transactionHashes: [] as string[],
       transactions: [] as Array<Record<string, unknown>>,
     };
     const emit = (event: string, value: unknown) => {
@@ -132,7 +143,10 @@ async function installInjectedWallet(page: Page, options: WalletOptions) {
             if (data.startsWith(selectors.quoteFunding)) return encoded.quoteFunding;
             if (data.startsWith(selectors.quoteRelease)) {
               const invoiceId = BigInt(`0x${data.slice(-64)}`);
-              return invoiceId === 6n ? encoded.quoteReleaseTopUp : encoded.quoteReleaseReady;
+              if (invoiceId !== 6n) return encoded.quoteReleaseReady;
+              if (state.topUpQuoteIndex === 0) return encoded.quoteReleaseTopUp;
+              if (state.topUpQuoteIndex === 1) return encoded.quoteReleaseTopUpLater;
+              return encoded.quoteReleaseReady;
             }
             if (data.startsWith(selectors.allowance)) {
               return `0x${BigInt(state.allowance).toString(16).padStart(64, "0")}`;
@@ -148,8 +162,22 @@ async function installInjectedWallet(page: Page, options: WalletOptions) {
               throw Object.assign(new Error("User rejected"), { code: 4001 });
             }
             state.transactions.push((params?.[0] ?? {}) as Record<string, unknown>);
-            return txHash;
-          case "eth_getTransactionReceipt": return receipt;
+            if (state.ambiguousNextSend) {
+              state.ambiguousNextSend = false;
+              throw new Error("Provider disconnected before returning a transaction hash.");
+            }
+            if (String((params?.[0] as { data?: string } | undefined)?.data ?? "").startsWith(selectors.topUp)) {
+              state.topUpQuoteIndex = Math.max(1, state.topUpQuoteIndex);
+            }
+            const nextHash = `0x${(10 + state.transactionHashes.length).toString(16).padStart(64, "0")}`;
+            state.transactionHashes.push(nextHash);
+            return nextHash;
+          case "eth_getTransactionReceipt": return state.receiptPending
+            ? null
+            : {
+              ...receipt,
+              transactionHash: String(params?.[0] ?? txHash),
+            };
           case "eth_blockNumber": return "0x64";
           case "eth_getBlockByNumber": return {
             baseFeePerGas: "0x1", difficulty: "0x0", extraData: "0x", gasLimit: "0x1c9c380",
@@ -172,6 +200,7 @@ async function installInjectedWallet(page: Page, options: WalletOptions) {
       __proofPayWalletTest: {
         state,
         setAllowance(value: string) { state.allowance = value; },
+        setTopUpQuoteIndex(value: number) { state.topUpQuoteIndex = value; },
       },
     });
   }, {
@@ -344,6 +373,233 @@ test("client refund, top-up, and release use the current simulated quote and exa
   await expect(release).toContainText("5 FXRP to the freelancer");
   await expect(release).toContainText("0.5 FXRP");
   await captureRefinement(page, "07-release-intent.png");
+});
+
+test("confirmed top-ups stay in history while distinct later quotes can top up again", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-08-09T10:00:00Z"));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await installInjectedWallet(page, { account: CLIENT, allowance: "999999999" });
+  await open(page, "/invoice/6");
+  await connect(page);
+
+  const setQuote = async (index: number) => await page.evaluate((value) => (
+    (window as never as { __proofPayWalletTest: { setTopUpQuoteIndex(next: number): void } })
+      .__proofPayWalletTest.setTopUpQuoteIndex(value)
+  ), index);
+  const transactionCount = async () => await page.evaluate(() => (
+    (window as never as { __proofPayWalletTest: { state: { transactions: unknown[] } } })
+      .__proofPayWalletTest.state.transactions.length
+  ));
+  const readIntentHash = async () => await page
+    .getByTestId("transaction-intent")
+    .locator("dt")
+    .filter({ hasText: "Intent hash" })
+    .locator("..")
+    .locator("dd")
+    .innerText();
+
+  await page.getByRole("button", { name: "Refresh and simulate settlement" }).click();
+  await expect(page.getByTestId("settlement-preview")).toContainText("exact shortfall is 1 FXRP");
+  const first = await expectPrepared(page, /Top up 1 FXRP before payment can be released/u);
+  const firstIntentHash = await readIntentHash();
+  await first.getByRole("button", { name: /Top up 1 FXRP/u }).evaluate((button) => {
+    if (!(button instanceof HTMLButtonElement)) throw new Error("Expected the top-up signing button.");
+    button.click();
+    button.click();
+  });
+  await expect(page.getByTestId("transaction-state")).toContainText("Transaction confirmed");
+  expect(await transactionCount()).toBe(1);
+  expect(await page.evaluate((selector) => (
+    (window as never as { __proofPayWalletTest: { state: { transactions: Array<{ data?: string }> } } })
+      .__proofPayWalletTest.state.transactions
+      .filter((transaction) => String(transaction.data ?? "").startsWith(selector)).length
+  ), calls.topUp)).toBe(1);
+
+  await setQuote(0);
+  await page.getByRole("button", { name: "Refresh and simulate settlement" }).click();
+  await expect(page.locator(".action-error")).toContainText(/intent already exists/iu);
+  expect(await transactionCount()).toBe(1);
+
+  await setQuote(1);
+  await page.getByRole("button", { name: "Refresh and simulate settlement" }).click();
+  await expect(page.getByTestId("settlement-preview")).toContainText("exact shortfall is 1.5 FXRP");
+  const second = await expectPrepared(page, /Top up 1\.5 FXRP before payment can be released/u);
+  const secondIntentHash = await readIntentHash();
+  expect(secondIntentHash).not.toBe(firstIntentHash);
+
+  const accessibility = await new AxeBuilder({ page }).analyze();
+  expect(accessibility.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""))).toEqual([]);
+  const widths = await page.evaluate(() => ({
+    content: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
+    viewport: document.documentElement.clientWidth,
+  }));
+  expect(widths.content).toBeLessThanOrEqual(widths.viewport);
+  await page.keyboard.press("Tab");
+  await expect(page.locator(":focus-visible")).toBeVisible();
+
+  await second.getByRole("button", { name: /Top up 1\.5 FXRP/u }).click();
+  await expect(page.getByTestId("transaction-state")).toContainText("Transaction confirmed");
+  expect(await transactionCount()).toBe(2);
+  await expect(page.getByTestId("transaction-journal").locator("li")).toHaveCount(2);
+
+  await page.reload({ waitUntil: "networkidle" });
+  await connect(page);
+  await expect(page.getByTestId("transaction-journal").locator("li")).toHaveCount(2);
+  await expect(page.getByTestId("transaction-journal")).toContainText("top up");
+  await expect(page.getByTestId("transaction-journal")).toContainText("confirmed");
+
+  await setQuote(1);
+  await page.getByRole("button", { name: "Refresh and simulate settlement" }).click();
+  await expect(page.locator(".action-error")).toContainText(/intent already exists/iu);
+
+  await setQuote(2);
+  await page.getByRole("button", { name: "Refresh and simulate settlement" }).click();
+  await expect(page.getByTestId("settlement-preview")
+    .locator("dt")
+    .filter({ hasText: "Exact top-up" })
+    .locator("..")
+    .locator("dd")).toHaveText("0 FXRP");
+  await expectPrepared(page, /Release payment/u);
+  await expect(page.getByTestId("transaction-intent")).not.toContainText(/Top up/u);
+});
+
+test("an ambiguous top-up wallet result remains fail-closed and cannot be signed again", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-08-09T10:00:00Z"));
+  await installInjectedWallet(page, {
+    account: CLIENT,
+    allowance: "999999999",
+    ambiguousNextSend: true,
+  });
+  await open(page, "/invoice/6");
+  await connect(page);
+
+  await page.getByRole("button", { name: "Refresh and simulate settlement" }).click();
+  const prepared = await expectPrepared(page, /Top up 1 FXRP before payment can be released/u);
+  await prepared.getByRole("button", { name: /Top up 1 FXRP/u }).click();
+  await expect(page.getByTestId("transaction-state")).toContainText("Signature request opened");
+  await expect(page.locator(".action-error")).toContainText(/cannot prove whether it broadcast/iu);
+  await expect(page.getByTestId("transaction-journal")).toContainText("Invoice 6 · awaiting_wallet");
+  await expect(prepared.getByRole("button", { name: /Top up 1 FXRP/u })).toHaveCount(0);
+  expect(await page.evaluate(() => (
+    (window as never as { __proofPayWalletTest: { state: { transactions: unknown[] } } })
+      .__proofPayWalletTest.state.transactions.length
+  ))).toBe(1);
+  const ambiguousJournalEntry = await page.evaluate(() => {
+    const journal = JSON.parse(
+      window.localStorage.getItem("proofpay.transaction-journal.v1") ?? "null",
+    ) as {
+      entries?: Array<{ status?: string; transactionHash?: string | null }>;
+    } | null;
+    return journal?.entries?.[0] ?? null;
+  });
+  expect(ambiguousJournalEntry).toMatchObject({ status: "awaiting_wallet", transactionHash: null });
+
+  await page.reload({ waitUntil: "networkidle" });
+  await connect(page);
+  await expect(page.getByTestId("transaction-journal")).toContainText("Invoice 6 · awaiting_wallet");
+  await page.evaluate(() => {
+    const harness = (window as never as {
+      __proofPayWalletTest: {
+        setAllowance(value: string): void;
+        setTopUpQuoteIndex(value: number): void;
+      };
+    }).__proofPayWalletTest;
+    harness.setTopUpQuoteIndex(1);
+    harness.setAllowance("0");
+  });
+  const allowanceCalls = async () => await page.evaluate((selector) => (
+    (window as never as {
+      __proofPayWalletTest: {
+        state: { requests: Array<{ method: string; params?: Array<{ data?: string }> }> };
+      };
+    }).__proofPayWalletTest.state.requests.filter((request) => (
+      request.method === "eth_call"
+      && String(request.params?.[0]?.data ?? "").startsWith(selector)
+    )).length
+  ), calls.allowance);
+  expect(await allowanceCalls()).toBe(0);
+
+  await page.getByRole("button", { name: "Refresh and simulate settlement" }).click();
+  await expect(page.getByTestId("settlement-preview")).toContainText("exact shortfall is 1.5 FXRP");
+  await expect(page.locator(".action-error")).toContainText(/A awaiting_wallet top up intent already exists/iu);
+  expect(await allowanceCalls()).toBe(0);
+  await expect(page.getByTestId("transaction-intent")).toHaveCount(0);
+});
+
+test("an unresolved submitted top-up survives reload and blocks a later quote before allowance or approval", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-08-09T10:00:00Z"));
+  await installInjectedWallet(page, {
+    account: CLIENT,
+    allowance: "999999999",
+    receiptPending: true,
+  });
+  await open(page, "/invoice/6");
+  await connect(page);
+
+  await page.getByRole("button", { name: "Refresh and simulate settlement" }).click();
+  const prepared = await expectPrepared(page, /Top up 1 FXRP before payment can be released/u);
+  await prepared.getByRole("button", { name: /Top up 1 FXRP/u }).click();
+  await expect(page.getByTestId("transaction-state")).toContainText("Transaction submitted");
+
+  const storedBeforeReload = await page.evaluate(() => JSON.parse(
+    window.localStorage.getItem("proofpay.transaction-journal.v1") ?? "null",
+  ) as { entries?: Array<{ action?: string; status?: string; transactionHash?: string }> } | null);
+  expect(storedBeforeReload?.entries).toHaveLength(1);
+  expect(storedBeforeReload?.entries?.[0]).toMatchObject({
+    action: "top_up",
+    status: "submitted",
+    transactionHash: `0x${"a".padStart(64, "0")}`,
+  });
+  expect(await page.evaluate((selector) => (
+    (window as never as { __proofPayWalletTest: { state: { transactions: Array<{ data?: string }> } } })
+      .__proofPayWalletTest.state.transactions
+      .filter((transaction) => String(transaction.data ?? "").startsWith(selector)).length
+  ), calls.topUp)).toBe(1);
+
+  await page.reload({ waitUntil: "networkidle" });
+  await connect(page);
+  await expect.poll(async () => await page.evaluate(() => (
+    (window as never as { __proofPayWalletTest: { state: { requests: Array<{ method: string }> } } })
+      .__proofPayWalletTest.state.requests
+      .filter((request) => request.method === "eth_getTransactionReceipt").length
+  ))).toBeGreaterThan(0);
+  await expect(page.getByTestId("transaction-journal")).toContainText("Invoice 6 · submitted");
+  await expect(page.getByTestId("transaction-journal")).toContainText(`0x${"a".padStart(64, "0")}`);
+
+  await page.evaluate(() => {
+    const harness = (window as never as {
+      __proofPayWalletTest: {
+        setAllowance(value: string): void;
+        setTopUpQuoteIndex(value: number): void;
+      };
+    }).__proofPayWalletTest;
+    harness.setTopUpQuoteIndex(1);
+    harness.setAllowance("0");
+  });
+  const countCalls = async (selector: string) => await page.evaluate((expectedSelector) => (
+    (window as never as {
+      __proofPayWalletTest: {
+        state: { requests: Array<{ method: string; params?: Array<{ data?: string }> }> };
+      };
+    }).__proofPayWalletTest.state.requests.filter((request) => (
+      request.method === "eth_call"
+      && String(request.params?.[0]?.data ?? "").startsWith(expectedSelector)
+    )).length
+  ), selector);
+  expect(await countCalls(calls.allowance)).toBe(0);
+  expect(await countCalls(calls.approve)).toBe(0);
+
+  await page.getByRole("button", { name: "Refresh and simulate settlement" }).click();
+  await expect(page.getByTestId("settlement-preview")).toContainText("exact shortfall is 1.5 FXRP");
+  await expect(page.locator(".action-error")).toContainText(/A submitted top up intent already exists/iu);
+  expect(await countCalls(calls.allowance)).toBe(0);
+  expect(await countCalls(calls.approve)).toBe(0);
+  await expect(page.getByTestId("transaction-intent")).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Approve up to/iu })).toHaveCount(0);
+  expect(await page.evaluate(() => (
+    (window as never as { __proofPayWalletTest: { state: { transactions: unknown[] } } })
+      .__proofPayWalletTest.state.transactions.length
+  ))).toBe(0);
 });
 
 test("wallet-action surfaces have no serious accessibility violations or mobile overflow", async ({ page }) => {

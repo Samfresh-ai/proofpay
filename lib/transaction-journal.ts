@@ -5,8 +5,10 @@ import {
   PROOFPAY_CONTRACT_ADDRESS,
 } from "./proofpay-contract";
 import {
+  hashTopUpIntentIdentity,
   proofPayTransactionActions,
   type ProofPayTransactionAction,
+  type TopUpQuoteIdentity,
   type TransactionIntent,
 } from "./transaction-intents";
 
@@ -30,6 +32,7 @@ export interface JournalEntry {
   action: ProofPayTransactionAction;
   intentHash: Hash;
   quoteDeadline: string | null;
+  topUpQuote: TopUpQuoteIdentity | null;
   transactionHash: Hash | null;
   status: JournalStatus;
   updatedAt: string;
@@ -49,6 +52,24 @@ export interface ReconciledReceipt {
   status: "success" | "reverted";
 }
 
+export interface SubmittedReceiptResolution {
+  intentHash: Hash;
+  transactionHash: Hash;
+  receipt: ReconciledReceipt;
+}
+
+interface JournalScope {
+  chainId: number;
+  contract: string;
+  account: string;
+  invoiceId: string;
+}
+
+export type JournalBlockingInput = JournalScope & (
+  | { action: "top_up"; intentHash: Hash }
+  | { action: Exclude<ProofPayTransactionAction, "top_up">; intentHash?: never }
+);
+
 function isHash(value: unknown): value is Hash {
   return typeof value === "string" && /^0x[0-9a-f]{64}$/iu.test(value);
 }
@@ -67,6 +88,36 @@ function isPositiveInvoiceId(value: unknown): value is string {
   return typeof value === "string" && /^[1-9][0-9]*$/u.test(value);
 }
 
+function isAtomicAmount(value: unknown, positive = false): value is string {
+  return typeof value === "string" && (positive ? /^[1-9][0-9]*$/u : /^(?:0|[1-9][0-9]*)$/u).test(value);
+}
+
+function validateTopUpQuote(value: unknown): TopUpQuoteIdentity | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const candidate = value as Record<string, unknown>;
+  if (
+    !isAtomicAmount(candidate.lockedFxrpAtomic)
+    || !isAtomicAmount(candidate.requiredTopUpAtomic, true)
+    || !isAtomicAmount(candidate.acceptedMaximumAtomic, true)
+    || !isAtomicAmount(candidate.quoteDeadline, true)
+    || !isAtomicAmount(candidate.priceAtomic, true)
+    || !Number.isInteger(candidate.priceDecimals)
+    || (candidate.priceDecimals as number) < 0
+    || (candidate.priceDecimals as number) > 18
+    || !isAtomicAmount(candidate.priceTimestamp, true)
+    || BigInt(candidate.acceptedMaximumAtomic) < BigInt(candidate.requiredTopUpAtomic)
+  ) return null;
+  return {
+    lockedFxrpAtomic: candidate.lockedFxrpAtomic,
+    requiredTopUpAtomic: candidate.requiredTopUpAtomic,
+    acceptedMaximumAtomic: candidate.acceptedMaximumAtomic,
+    quoteDeadline: candidate.quoteDeadline,
+    priceAtomic: candidate.priceAtomic,
+    priceDecimals: candidate.priceDecimals as number,
+    priceTimestamp: candidate.priceTimestamp,
+  };
+}
+
 function validateEntry(value: unknown): JournalEntry | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const candidate = value as Record<string, unknown>;
@@ -77,12 +128,58 @@ function validateEntry(value: unknown): JournalEntry | null {
   if (!isAddress(candidate.account) || !isPositiveInvoiceId(candidate.invoiceId)) return null;
   if (!proofPayTransactionActions.includes(candidate.action as ProofPayTransactionAction)) return null;
   if (!isHash(candidate.intentHash) || !journalStatuses.includes(candidate.status as JournalStatus)) return null;
+  const storedStatus = candidate.status as JournalStatus;
   if (candidate.quoteDeadline !== null && (
     typeof candidate.quoteDeadline !== "string" || !/^[0-9]+$/u.test(candidate.quoteDeadline)
   )) return null;
+  const suppliedTopUpQuote = candidate.topUpQuote !== undefined && candidate.topUpQuote !== null;
+  let topUpQuote = validateTopUpQuote(candidate.topUpQuote);
+  if (suppliedTopUpQuote && topUpQuote === null) {
+    if (candidate.action !== "top_up" || storedStatus === "prepared") return null;
+    // A partial legacy identity is never trusted for exact matching, but an already-open
+    // wallet request or broadcast must remain quarantined rather than disappear.
+    topUpQuote = null;
+  }
+  if (candidate.action !== "top_up" && topUpQuote !== null) return null;
+  if (topUpQuote && candidate.quoteDeadline !== topUpQuote.quoteDeadline) {
+    if (candidate.action !== "top_up" || storedStatus === "prepared") return null;
+    // A cross-field mismatch makes the quote identity untrusted, but an open wallet
+    // request or broadcast must remain quarantined instead of disappearing on reload.
+    topUpQuote = null;
+  }
   if (candidate.transactionHash !== null && !isHash(candidate.transactionHash)) return null;
+  const transactionHash = candidate.transactionHash as Hash | null;
+  if (["submitted", "confirmed", "reverted"].includes(storedStatus)) {
+    if (transactionHash === null) return null;
+  } else if (transactionHash !== null) {
+    return null;
+  }
+  if (
+    candidate.action === "top_up"
+    && topUpQuote === null
+    && storedStatus === "prepared"
+  ) {
+    // Legacy unsigned top-ups lack enough identity to sign safely, so they are dropped.
+    // Awaiting/submitted entries remain quarantined and scope-blocking because a wallet
+    // may already have broadcast; terminal entries remain untrusted, nonblocking history.
+    return null;
+  }
+  if (candidate.action === "top_up" && topUpQuote !== null) {
+    const expectedHash = hashTopUpIntentIdentity({
+      chainId: candidate.chainId as number,
+      contract: candidate.contract as string,
+      invoiceId: candidate.invoiceId as string,
+      account: candidate.account as string,
+      action: "top_up",
+      ...topUpQuote,
+    });
+    if (candidate.intentHash.toLowerCase() !== expectedHash.toLowerCase()) {
+      if (storedStatus === "prepared") return null;
+      topUpQuote = null;
+    }
+  }
   if (typeof candidate.updatedAt !== "string" || Number.isNaN(Date.parse(candidate.updatedAt))) return null;
-  const status = candidate.status === "awaiting_wallet" ? "prepared" : candidate.status as JournalStatus;
+  const status = storedStatus;
   return {
     chainId: PROOFPAY_CHAIN_ID,
     contract: getAddress(candidate.contract),
@@ -91,7 +188,8 @@ function validateEntry(value: unknown): JournalEntry | null {
     action: candidate.action as ProofPayTransactionAction,
     intentHash: candidate.intentHash,
     quoteDeadline: candidate.quoteDeadline as string | null,
-    transactionHash: candidate.transactionHash as Hash | null,
+    topUpQuote,
+    transactionHash,
     status,
     updatedAt: candidate.updatedAt,
   };
@@ -129,6 +227,7 @@ export function journalEntryFromIntent(
     action: intent.action,
     intentHash: intent.intentHash,
     quoteDeadline: intent.quoteDeadline,
+    topUpQuote: intent.topUpQuote,
     transactionHash: null,
     status: "prepared",
     updatedAt: now.toISOString(),
@@ -139,9 +238,51 @@ export function upsertJournalEntry(
   entries: readonly JournalEntry[],
   entry: JournalEntry,
 ): JournalEntry[] {
+  const existing = entries.find((candidate) => candidate.intentHash.toLowerCase() === entry.intentHash.toLowerCase());
+  if (
+    entry.action === "top_up"
+    && existing?.action === "top_up"
+    && ["submitted", "confirmed", "reverted"].includes(existing.status)
+  ) {
+    throw new Error("This top-up intent has already been broadcast and cannot be prepared again.");
+  }
   const withoutExisting = entries.filter((candidate) => candidate.intentHash !== entry.intentHash);
   return [...withoutExisting, entry].sort((left, right) => left.updatedAt.localeCompare(right.updatedAt));
 }
+
+export function journalBlockingInputFromIntent(intent: TransactionIntent): JournalBlockingInput {
+  const scope = {
+    chainId: intent.chainId,
+    contract: intent.contract,
+    account: intent.account,
+    invoiceId: intent.invoiceId,
+  };
+  return intent.action === "top_up"
+    ? { ...scope, action: "top_up", intentHash: intent.intentHash }
+    : { ...scope, action: intent.action };
+}
+
+export function prepareJournalIntent(
+  entries: readonly JournalEntry[],
+  intent: TransactionIntent,
+  now = new Date(),
+): { entry: JournalEntry; entries: JournalEntry[] } {
+  const blocking = findBlockingJournalEntry(entries, journalBlockingInputFromIntent(intent));
+  if (blocking) {
+    throw new Error(`A ${blocking.status} ${blocking.action.replaceAll("_", " ")} intent already exists for this invoice.`);
+  }
+  const entry = journalEntryFromIntent(intent, now);
+  return { entry, entries: upsertJournalEntry(entries, entry) };
+}
+
+const allowedTransitions: Record<JournalStatus, readonly JournalStatus[]> = {
+  prepared: ["awaiting_wallet", "abandoned"],
+  awaiting_wallet: ["prepared", "submitted"],
+  submitted: ["confirmed", "reverted"],
+  confirmed: [],
+  reverted: [],
+  abandoned: [],
+};
 
 export function transitionJournalEntry(
   entries: readonly JournalEntry[],
@@ -153,10 +294,37 @@ export function transitionJournalEntry(
   const next = entries.map((entry) => {
     if (entry.intentHash !== intentHash) return entry;
     found = true;
+    if (!allowedTransitions[entry.status].includes(status)) {
+      throw new Error(`Transaction intent cannot transition from ${entry.status} to ${status}.`);
+    }
+    let transactionHash = entry.transactionHash;
+    if (status === "submitted") {
+      if (options.transactionHash === undefined || options.transactionHash === null || !isHash(options.transactionHash)) {
+        throw new Error("A submitted transaction requires its transaction hash.");
+      }
+      transactionHash = options.transactionHash;
+    } else if (status === "confirmed" || status === "reverted") {
+      if (entry.transactionHash === null) {
+        throw new Error("A terminal receipt status requires the submitted transaction hash.");
+      }
+      if (
+        options.transactionHash !== undefined
+        && options.transactionHash !== null
+        && options.transactionHash.toLowerCase() !== entry.transactionHash.toLowerCase()
+      ) {
+        throw new Error("Receipt transaction hash does not match the submitted intent.");
+      }
+      transactionHash = entry.transactionHash;
+    } else {
+      if (options.transactionHash !== undefined && options.transactionHash !== null) {
+        throw new Error(`${status} intents cannot carry a transaction hash.`);
+      }
+      transactionHash = null;
+    }
     return {
       ...entry,
       status,
-      transactionHash: options.transactionHash === undefined ? entry.transactionHash : options.transactionHash,
+      transactionHash,
       updatedAt: (options.now ?? new Date()).toISOString(),
     };
   });
@@ -164,27 +332,58 @@ export function transitionJournalEntry(
   return next;
 }
 
+export function beginWalletRequest(
+  entries: readonly JournalEntry[],
+  intentHash: Hash,
+  now = new Date(),
+): JournalEntry[] {
+  const entry = entries.find((candidate) => candidate.intentHash === intentHash);
+  if (!entry || entry.status !== "prepared" || entry.transactionHash !== null) {
+    throw new Error("Only the current unsigned prepared intent can open a wallet request.");
+  }
+  const unresolvedSameScope = entries.find((candidate) => (
+    candidate.intentHash !== entry.intentHash
+    && candidate.chainId === entry.chainId
+    && candidate.contract.toLowerCase() === entry.contract.toLowerCase()
+    && candidate.account.toLowerCase() === entry.account.toLowerCase()
+    && candidate.invoiceId === entry.invoiceId
+    && candidate.action === entry.action
+    && (candidate.status === "awaiting_wallet" || candidate.status === "submitted")
+  ));
+  if (unresolvedSameScope) {
+    throw new Error("An unresolved wallet request for this action must be settled before signing.");
+  }
+  return transitionJournalEntry(entries, intentHash, "awaiting_wallet", { now });
+}
+
 export function findBlockingJournalEntry(
   entries: readonly JournalEntry[],
-  input: {
-    account: string;
-    invoiceId: string;
-    action: ProofPayTransactionAction;
-  },
+  input: JournalBlockingInput,
 ): JournalEntry | null {
+  const scoped = entries.filter((entry) => (
+    entry.chainId === input.chainId
+    && entry.contract.toLowerCase() === input.contract.toLowerCase()
+    && entry.account.toLowerCase() === input.account.toLowerCase()
+    && entry.invoiceId === input.invoiceId
+    && entry.action === input.action
+  ));
+  if (input.action === "top_up") {
+    const unresolvedWalletOrSubmission = scoped.find((entry) => (
+      entry.status === "awaiting_wallet" || entry.status === "submitted"
+    ));
+    if (unresolvedWalletOrSubmission) return unresolvedWalletOrSubmission;
+    return scoped.find((entry) => (
+      entry.topUpQuote !== null
+      && entry.intentHash.toLowerCase() === input.intentHash.toLowerCase()
+      && ["prepared", "confirmed", "reverted"].includes(entry.status)
+    )) ?? null;
+  }
   const blocked = new Set<JournalStatus>(
     input.action === "approve"
       ? ["prepared", "awaiting_wallet", "submitted"]
       : ["prepared", "awaiting_wallet", "submitted", "confirmed"],
   );
-  return entries.find((entry) => (
-    entry.chainId === PROOFPAY_CHAIN_ID
-    && entry.contract.toLowerCase() === PROOFPAY_CONTRACT_ADDRESS.toLowerCase()
-    && entry.account.toLowerCase() === input.account.toLowerCase()
-    && entry.invoiceId === input.invoiceId
-    && entry.action === input.action
-    && blocked.has(entry.status)
-  )) ?? null;
+  return scoped.find((entry) => blocked.has(entry.status)) ?? null;
 }
 
 export function abandonPreparedIntent(
@@ -204,16 +403,47 @@ export async function reconcileSubmittedEntries(
   getReceipt: (hash: Hash) => Promise<ReconciledReceipt | null>,
   now = new Date(),
 ): Promise<JournalEntry[]> {
-  let reconciled = [...entries];
+  const resolutions = await collectSubmittedReceiptResolutions(entries, getReceipt);
+  return applySubmittedReceiptResolutions(entries, resolutions, now);
+}
+
+export async function collectSubmittedReceiptResolutions(
+  entries: readonly JournalEntry[],
+  getReceipt: (hash: Hash) => Promise<ReconciledReceipt | null>,
+): Promise<SubmittedReceiptResolution[]> {
+  const resolutions: SubmittedReceiptResolution[] = [];
   for (const entry of entries) {
     if (entry.status !== "submitted" || entry.transactionHash === null) continue;
     const receipt = await getReceipt(entry.transactionHash);
     if (!receipt) continue;
+    resolutions.push({
+      intentHash: entry.intentHash,
+      transactionHash: entry.transactionHash,
+      receipt,
+    });
+  }
+  return resolutions;
+}
+
+export function applySubmittedReceiptResolutions(
+  entries: readonly JournalEntry[],
+  resolutions: readonly SubmittedReceiptResolution[],
+  now = new Date(),
+): JournalEntry[] {
+  let reconciled = [...entries];
+  for (const resolution of resolutions) {
+    const current = reconciled.find((entry) => entry.intentHash === resolution.intentHash);
+    if (
+      !current
+      || current.status !== "submitted"
+      || current.transactionHash === null
+      || current.transactionHash.toLowerCase() !== resolution.transactionHash.toLowerCase()
+    ) continue;
     reconciled = transitionJournalEntry(
       reconciled,
-      entry.intentHash,
-      receipt.status === "success" ? "confirmed" : "reverted",
-      { transactionHash: entry.transactionHash, now },
+      current.intentHash,
+      resolution.receipt.status === "success" ? "confirmed" : "reverted",
+      { transactionHash: current.transactionHash, now },
     );
   }
   return reconciled;

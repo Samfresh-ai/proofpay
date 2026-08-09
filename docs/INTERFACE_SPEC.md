@@ -1,13 +1,53 @@
-# ProofPay read-only interface specification
+# ProofPay interface specification
 
-Status: Phase 5A implemented and validated on 2026-08-08.
+Status: Phases 5A–5D implemented and validated. Phase 5D's repeated-top-up journal correction is
+proved by deterministic unit and simulated-wallet browser evidence; no live repeated top-up is
+claimed.
 
-## Phase boundary
+## Current synopsis
 
-Phase 5A presents contract and transaction-receipt evidence only. It introduces no wallet
-connection, signature request, transaction control, authentication, database, indexer, API server,
+The current application has `/app`, `/invoice/[id]`, and `/receipt/[id]`. Arbitrary positive invoice
+IDs use direct pinned state reads; verified decoded receipts are available only where lifecycle
+transaction locators are preserved. Both invoice `1` and browser-settled invoice `2` have preserved
+locators. No generic event-history discovery, backend, database, indexer, authentication, or
+cross-device journal exists.
+
+Funding uses one frozen intent across allowance review, exact approval when required, and funding.
+Under ordinary quote movement inside the accepted maximum, that means one approval rather than a
+requote-and-reapprove loop. Expiry, an amount above the maximum, or an account, chain, contract, or
+invoice mismatch invalidates the intent. Approval remains allowance-driven and unlimited approval
+is never prepared.
+
+Released public records use `SETTLED`, `Payment settled`, and `View settlement receipt` while
+`RELEASED` remains the technical contract state. The settlement rail leads with human meaning—
+milestone agreed, FXRP funded, delivery evidence attached, payment settled—and keeps event names,
+blocks, transactions, amounts, price observations, and commitments in progressive technical
+evidence disclosures. The warm editorial document, compact mobile rail, shortened identifiers,
+keyboard focus, and reduced-motion behavior remain the current visual and accessibility direction.
+
+Top-up is repeatable at the intent layer because the contract may require another exact shortfall
+after a later XRP price decrease. A top-up intent binds chain, contract, invoice, client account,
+action, observed locked FXRP, exact required top-up, accepted maximum, quote deadline, price value,
+price decimals, price timestamp, and a deterministic hash. Prepared state blocks the same intent;
+wallet-open uncertainty blocks an overlapping same-scope signing request, and any submitted
+transaction in that scope must reconcile before a newer intent is created. A broadcast intent hash
+cannot be reused, but confirmed or
+reverted history does not block a distinct later quote. Abandoned unsigned history may be prepared
+again because it was never submitted. Account, chain, contract, or invoice changes invalidate the
+active intent; reload preserves and reconciles submitted state.
+
+The top-up control is available only to the connected client for a `SUBMITTED` invoice when a fresh
+release quote reports a nonzero shortfall and no applicable intent is pending reconciliation. A
+zero-shortfall refresh offers release, not top-up. Funding, evidence submission, release,
+cancellation, and refund retain their one-time state protections.
+
+## Historical Phase 5A read-only boundary
+
+This section records the Phase 5A checkpoint. At that checkpoint, the interface presented contract
+and transaction-receipt evidence only. It introduced no wallet connection, signature request,
+transaction control, authentication, database, indexer, API server,
 analytics, landing page, or contract change. `/invoice/[id]` supports arbitrary positive invoice
-IDs through direct contract reads. `/receipt/1` is the one verified historical receipt; another
+IDs through direct contract reads. `/receipt/1` was then the one verified historical receipt; another
 positive receipt ID returns an honest unavailable state because no verified transaction locator
 exists for it.
 
@@ -20,7 +60,9 @@ must contain exactly one log from the deployed ProofPay contract, that log must 
 expected event, and its values must match the verified invoice. The route then makes one pinned
 current-state snapshot for the invoice, aggregate liabilities, contract balance, and relevant party
 balances. Any contradiction fails the receipt. A generic history/indexing layer
-and a browser-created invoice transaction journal remain explicit post-hackathon work.
+and a browser-created invoice transaction journal were outside the Phase 5A boundary. Later phases
+added wallet actions, a browser-local journal, and the invoice `2` locator without adding generic
+history indexing.
 
 ## Evidence-fidelity map
 
@@ -30,16 +72,18 @@ and a browser-created invoice transaction journal remain explicit post-hackathon
 | Parties, target, deadline, scope hash, status, locked FXRP, price observations, evidence hash | current `invoices(id)` result | live Coston2 contract read | current durable record |
 | Active liabilities | `activeFxrpLiabilities()` | live Coston2 contract read | current aggregate state |
 | Contract FXRP balance | `balanceOf(contract)` | live Coston2 FXRP read | current token balance |
-| Lifecycle transaction, block, event values | decoded ProofPay event from a verified transaction locator | live Coston2 transaction receipts for invoice 1 | proof for one transition |
-| Evidence URI | `EvidenceSubmitted` event | live Coston2 evidence transaction receipt for invoice 1 | opaque retrieval reference committed by the evidence hash |
-| Payout and client refund | `InvoiceReleased` event | live Coston2 release transaction receipt for invoice 1 | confirmed settlement amounts |
-| Milestone title and scope lines for invoice 1 | canonical manifest whose exact bytes match the live scope hash | `artifacts/live-scope-manifest.json` plus live `scopeHash` | hash-verified offchain description |
-| Completion note for invoice 1 | canonical manifest whose exact bytes match the live evidence hash | `artifacts/live-evidence-manifest.json` plus live `evidenceHash` | hash-verified offchain description |
-| Expected invoice 1 values | independently verified Phase 4B receipt | `artifacts/coston2-settlement-receipt.json` | development and test oracle only; never the runtime data adapter |
+| Lifecycle transaction, block, event values | decoded ProofPay event from a preserved verified locator | live Coston2 receipts for invoices 1 and 2 | proof for one transition |
+| Evidence URI | `EvidenceSubmitted` event | live Coston2 evidence receipts for invoices 1 and 2 | opaque retrieval reference committed by the evidence hash |
+| Payout and client refund | `InvoiceReleased` event | live Coston2 release receipts for invoices 1 and 2 | confirmed settlement amounts |
+| Milestone title and scope lines | canonical manifest whose exact bytes match the live scope hash | `artifacts/live-scope-manifest.json` and `artifacts/browser-scope-manifest.json` plus live `scopeHash` | hash-verified offchain description |
+| Completion note | canonical manifest whose exact bytes match the live evidence hash | `artifacts/live-evidence-manifest.json` and `artifacts/browser-evidence-manifest.json` plus live `evidenceHash` | hash-verified offchain description |
+| Expected invoice 1 and 2 values | independently verified settlement records | `artifacts/coston2-settlement-receipt.json` and `artifacts/coston2-browser-settlement-receipt.json` | development and test oracles only; never the runtime data adapter |
 
 Unknown manifests are not guessed. Their pages use `ProofPay milestone #ID` and show the onchain
 hash without inventing a title or scope. Receipt events remain four parallel evidence rows and are
-accepted only when each decodes for invoice 1 from the deployed contract at its locator hash.
+accepted only when every referenced transaction decodes for the requested invoice from the
+deployed contract at its preserved locator. Locators currently exist for invoices `1` and `2`;
+other released IDs receive an honest unavailable-receipt state.
 
 ## Direction sheet
 
@@ -51,8 +95,9 @@ transaction, receipt, Coston2 contract.
 
 ### User priority
 
-The first question is: **What happened to this milestone and its money?** The next available action
-is read-only: follow the receipt or reveal the exact chain evidence that proves a stage.
+The first question is: **What happened to this milestone and its money?** The next available step is
+either the one role- and state-authorized wallet action or, for completed records, following the
+receipt and revealing the exact chain evidence that proves a stage.
 
 ### Information character
 
@@ -141,7 +186,7 @@ are inserted only after their source reads succeed.
 | `FUNDED` | Milestone funded | The client locked the displayed FXRP amount. Waiting for delivery evidence. |
 | `SUBMITTED` | Delivery evidence submitted | FXRP remains locked while the client reviews the evidence. Waiting for the client’s decision. |
 | derived underfunding | Top-up required | The escrow no longer covers the milestone target. No payment has been released. |
-| `RELEASED` | Payment released | The release state and price are confirmed. Show a receipt link only when its transaction locator is verified. |
+| `RELEASED` | Payment settled | The release state and price are confirmed. Show a receipt link only when its transaction locator is verified. |
 | `CANCELLED` | Invoice cancelled | The freelancer cancelled before funding. No FXRP was locked. |
 | `REFUNDED` | FXRP returned to the client | The deadline passed without submitted evidence. The full lock returned to the client. |
 
@@ -186,7 +231,7 @@ or decorative container set. Every named component is a ProofPay object: `Milest
 `SettlementRail`, `MoneyLine`, `PriceObservation`, `EvidenceAttachment`,
 `TransactionEvidence`, `SettlementReceipt`, `StatusStamp`, and `AddressLabel`.
 
-## Validation boundary
+## Historical Phase 5A validation boundary
 
 Phase 5A can claim automated accessibility checks, responsive screenshot inspection, successful
 live reconciliation, and passing code/build tests when evidence exists. Its pinned numeric block
@@ -194,7 +239,7 @@ reads do not eliminate the small reorganization race that a block-hash-bound cli
 It cannot claim usability testing, production readiness, audit coverage, legal escrow, or mainnet
 behavior.
 
-## Implementation and validation record
+## Historical Phase 5A implementation and validation record
 
 - `/invoice/[id]` and `/receipt/[id]` are dynamic server-rendered App Router routes. Invoice IDs use
   direct pinned reads; only `/receipt/1` has a verified historical transaction locator.
@@ -210,9 +255,12 @@ behavior.
 - A temporary RPC failure rendered the explicit error and retry document without substituting
   fixtures. Final validation resumed only after live reconciliation succeeded.
 
-## Phase 5B1 wallet-action extension
+## Historical Phase 5B1 wallet-action extension
 
-Phase 5B1 adds action preparation to the same document hierarchy; it does not replace the Phase 5A
+This section preserves the Phase 5B1 implementation record. Its requirement to requote funding
+after approval was superseded by the Phase 5C frozen funding intent, and its action-level confirmed
+journal rule was refined for repeatable top-up intents in Phase 5D. Phase 5B1 added action
+preparation to the same document hierarchy; it did not replace the Phase 5A
 read boundary or alter `/receipt/[id]`. `/app` creates or locates a milestone. `/invoice/[id]`
 derives the next available action from the connected account, invoice state, deadline, chain, and
 latest simulated quote. Every state-changing control requires an injected EVM wallet connected to
@@ -263,7 +311,7 @@ dependency audit, protected-file comparison, and `git diff --check`. The action 
 serious/critical Axe results, visible keyboard focus, and 390-pixel overflow. No real Coston2 wallet
 transaction was sent.
 
-## Phase 5B2 observed live behavior
+## Historical Phase 5B2 observed live behavior
 
 The Phase 5B2 harness injects a temporary EIP-1193 provider through Playwright. Its signer and
 private keys remain in the Node test process; no signer bridge exists in production application
@@ -351,3 +399,32 @@ reconciliation, invoice 2 receipt verification, exact secret scanning, accessibi
 overflow checks, and `git diff --check`. Seven visually inspected screenshots are under
 `artifacts/interface-refinement/`. This remains automated Coston2 testnet evidence, not human
 usability, audit, mainnet, legal-escrow, or production-readiness evidence.
+
+## Phase 5D repeatable top-up journal rule
+
+Phase 5D changes browser intent policy only; it does not change the contract, deployment, product
+scope, interface direction, receipt locators, or one-time lifecycle protections. The deterministic
+intent hash covers the complete top-up observation and client acceptance described in the current
+synopsis, so a later price observation and shortfall produce a distinct intent without erasing the
+first top-up from journal history.
+
+`prepared` blocks the same active intent. `awaiting_wallet` also blocks an overlapping same-scope
+signing request because the wallet may still broadcast it. `submitted` blocks further top-up
+creation across the same account, chain, contract, and invoice until its receipt is reconciled.
+`confirmed` and `reverted` prove that a broadcast hash has been consumed and prevent that exact
+intent from being sent again, but do not block a later distinct quote. `abandoned` remains history
+and may be prepared again because no transaction was submitted. Reload restores active intent
+state and reconciles a submitted hash before offering further action.
+
+This rule is proved with deterministic simulated price decreases, field-by-field identity checks,
+exact-hash and rapid-double-sign replay checks, zero-shortfall policy coverage, reload and delayed-
+receipt reconciliation, ambiguous post-send/no-hash fail-closed handling, explicit-rejection
+retryability, unresolved-record quarantine, context invalidation, and regression checks for
+approval plus the one-time actions. The final gate passed 58 unit tests, 15
+simulated browser tests, one production hydration test, the production build, top-up-state Axe,
+390-pixel overflow and keyboard checks, current read-only reconciliation for invoices `1` and `2`,
+protected-evidence checks, exact secret scanning, and `git diff --check` without a broadcast.
+
+This deterministic evidence does not claim that a live Coston2 top-up, second top-up, cancellation,
+or missed-deadline refund has been demonstrated. It adds no cross-device journal, audit, mainnet,
+legal-escrow, fiat-settlement, human-usability, or production-readiness evidence.

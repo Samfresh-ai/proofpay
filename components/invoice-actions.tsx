@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { getAddress, type Hash } from "viem";
 
 import type { InvoiceView } from "@/lib/proofpay";
@@ -32,6 +32,8 @@ import {
   formatAtomicUnits,
   formatFxrpAmount,
   formatQuoteTimestamp,
+  isExplicitWalletRejection,
+  transactionIntentInvalidationReason,
   type ReleaseQuote,
   type TransactionIntent,
 } from "@/lib/transaction-intents";
@@ -54,6 +56,7 @@ interface FundingPreview {
 
 interface PreparedAction {
   intent: TransactionIntent;
+  guardIntent?: TransactionIntent;
   send: () => Promise<Hash>;
   status: Exclude<JournalStatus, "abandoned">;
   transactionHash: Hash | null;
@@ -85,6 +88,7 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
   const [walletActionsCommit, setWalletActionsCommit] = useState("");
   const [completionNote, setCompletionNote] = useState("");
   const [prepared, setPrepared] = useState<PreparedAction | null>(null);
+  const signingIntentRef = useRef<Hash | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [mountedAt] = useState(() => BigInt(Math.floor(Date.now() / 1_000)));
@@ -116,6 +120,30 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
     fundingIntent.clear(fundingIntent.intent.intentHash);
   }, [fundingIntent, invoiceId, wallet.account, wallet.chainId]);
 
+  useEffect(() => {
+    if (!prepared) return;
+    const invalidation = transactionIntentInvalidationReason(prepared.intent, {
+      account: wallet.account ?? null,
+      chainId: wallet.chainId,
+      contract: PROOFPAY_CONTRACT_ADDRESS,
+      invoiceId,
+    });
+    if (!invalidation) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const journalEntry = journal.currentEntry(prepared.intent.intentHash);
+      if (journalEntry?.status === "prepared" && journalEntry.transactionHash === null) {
+        journal.abandon(prepared.intent.intentHash);
+      }
+      setPrepared(null);
+      setActionError("The prepared transaction was invalidated after its wallet or invoice context changed. Preview it again.");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [invoiceId, journal, prepared, wallet.account, wallet.chainId]);
+
   const visibleFundingPreview = fundingIntent.intent
     ? fundingPreview?.intent.intentHash === fundingIntent.intent.intentHash
       ? fundingPreview
@@ -134,15 +162,27 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
     return { account: getAddress(wallet.account), client: actionClient };
   };
 
-  const acceptPrepared = (next: PreparedAction) => {
-    const blocking = journal.blocking({
-      account: next.intent.account,
-      invoiceId: next.intent.invoiceId,
-      action: next.intent.action,
-    });
+  const blockingEntryForIntent = (intent: TransactionIntent) => {
+    const scope = {
+      chainId: intent.chainId,
+      contract: intent.contract,
+      account: intent.account,
+      invoiceId: intent.invoiceId,
+    };
+    return intent.action === "top_up"
+      ? journal.blocking({ ...scope, action: "top_up", intentHash: intent.intentHash })
+      : journal.blocking({ ...scope, action: intent.action });
+  };
+
+  const assertIntentAvailable = (intent: TransactionIntent) => {
+    const blocking = blockingEntryForIntent(intent);
     if (blocking) {
       throw new Error(`A ${blocking.status} ${blocking.action.replaceAll("_", " ")} intent already exists for this invoice. Reconcile or abandon it before preparing another.`);
     }
+  };
+
+  const acceptPrepared = (next: PreparedAction) => {
+    assertIntentAvailable(next.intent);
     journal.prepare(next.intent);
     setPrepared(next);
   };
@@ -339,18 +379,45 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
         args: [invoiceId],
       });
       const [payoutFxrp, refundFxrp, topUpFxrp, price, priceDecimals, priceTimestamp] = preview.result;
-      const quote: ReleaseQuote = { payoutFxrp, refundFxrp, topUpFxrp, price, priceDecimals, priceTimestamp };
+      if (topUpFxrp > payoutFxrp || (topUpFxrp > 0n && refundFxrp > 0n)) {
+        throw new Error("The release quote returned inconsistent lock accounting.");
+      }
+      const observedLockedFxrp = topUpFxrp > 0n
+        ? payoutFxrp - topUpFxrp
+        : payoutFxrp + refundFxrp;
+      const quote: ReleaseQuote = {
+        lockedFxrp: observedLockedFxrp,
+        payoutFxrp,
+        refundFxrp,
+        topUpFxrp,
+        price,
+        priceDecimals,
+        priceTimestamp,
+      };
       setReleaseQuote(quote);
       const deadline = quoteDeadline();
 
       if (topUpFxrp > 0n) {
         const maximumFxrp = applyTolerance(topUpFxrp, toleranceBps);
+        const intent = buildTopUpIntent({
+          account,
+          invoiceId,
+          lockedFxrp: quote.lockedFxrp,
+          shortfallFxrp: topUpFxrp,
+          maximumFxrp,
+          quoteDeadline: deadline,
+          price,
+          priceDecimals,
+          priceTimestamp,
+        });
+        assertIntentAvailable(intent);
         const allowance = await client.readContract({
           address: PROOFPAY_FXRP_ADDRESS,
           abi: fxrpAbi,
           functionName: "allowance",
           args: [account, PROOFPAY_CONTRACT_ADDRESS],
         });
+        assertIntentAvailable(intent);
         if (allowance < maximumFxrp) {
           const approval = await client.simulateContract({
             account,
@@ -359,9 +426,11 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
             functionName: "approve",
             args: [PROOFPAY_CONTRACT_ADDRESS, maximumFxrp],
           });
-          const intent = buildApprovalIntent({ account, invoiceId, maximumFxrp });
+          assertIntentAvailable(intent);
+          const approvalIntent = buildApprovalIntent({ account, invoiceId, maximumFxrp });
           acceptPrepared({
-            intent,
+            intent: approvalIntent,
+            guardIntent: intent,
             send: async () => await client.writeContract(approval.request),
             status: "prepared",
             transactionHash: null,
@@ -375,13 +444,6 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
           abi: proofPayAbi,
           functionName: "topUp",
           args: [invoiceId, maximumFxrp, deadline],
-        });
-        const intent = buildTopUpIntent({
-          account,
-          invoiceId,
-          shortfallFxrp: topUpFxrp,
-          maximumFxrp,
-          quoteDeadline: deadline,
         });
         acceptPrepared({
           intent,
@@ -474,8 +536,23 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
   };
 
   const signPrepared = async () => {
-    if (!prepared) return;
+    if (!prepared || signingIntentRef.current !== null) return;
     const client = wallet.actionClient;
+    const invalidation = transactionIntentInvalidationReason(prepared.intent, {
+      account: wallet.account ?? null,
+      chainId: wallet.chainId,
+      contract: PROOFPAY_CONTRACT_ADDRESS,
+      invoiceId,
+    });
+    if (invalidation) {
+      const journalEntry = journal.currentEntry(prepared.intent.intentHash);
+      if (journalEntry?.status === "prepared" && journalEntry.transactionHash === null) {
+        journal.abandon(prepared.intent.intentHash);
+      }
+      setPrepared(null);
+      setActionError("The prepared transaction no longer matches this wallet and invoice context. Preview it again.");
+      return;
+    }
     if (
       wallet.chainState !== "ready"
       || !wallet.account
@@ -485,16 +562,28 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
       setPrepared({ ...prepared, error: "Reconnect the same Coston2 account before signing this intent." });
       return;
     }
-    journal.transition(prepared.intent.intentHash, "awaiting_wallet");
-    setPrepared({ ...prepared, status: "awaiting_wallet", error: null });
+    signingIntentRef.current = prepared.intent.intentHash;
     let hash: Hash | null = null;
+    let walletRequestOpened = false;
     try {
+      if (prepared.guardIntent) assertIntentAvailable(prepared.guardIntent);
+      journal.beginWallet(prepared.intent.intentHash);
+      walletRequestOpened = true;
+      setPrepared({ ...prepared, status: "awaiting_wallet", error: null });
       hash = await prepared.send();
       journal.transition(prepared.intent.intentHash, "submitted", hash);
       setPrepared({ ...prepared, status: "submitted", transactionHash: hash, error: null });
       const receipt = await client.waitForTransactionReceipt({ hash, confirmations: 1, timeout: 120_000 });
       const status = receipt.status === "success" ? "confirmed" : "reverted";
-      journal.transition(prepared.intent.intentHash, status, hash);
+      const currentEntry = journal.currentEntry(prepared.intent.intentHash);
+      if (currentEntry?.status === "submitted") {
+        journal.transition(prepared.intent.intentHash, status, hash);
+      } else if (
+        currentEntry?.status !== status
+        || currentEntry.transactionHash?.toLowerCase() !== hash.toLowerCase()
+      ) {
+        throw new Error("The reconciled journal receipt no longer matches this wallet result.");
+      }
       setPrepared({ ...prepared, status, transactionHash: hash, error: null });
       if (status === "confirmed" && prepared.intent.action === "fund" && fundingIntent.intent) {
         fundingIntent.clear(fundingIntent.intent.intentHash);
@@ -502,8 +591,42 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
       if (status === "confirmed" && prepared.intent.action !== "approve") router.refresh();
     } catch (error) {
       if (hash === null) {
-        journal.transition(prepared.intent.intentHash, "prepared", null);
-        setPrepared({ ...prepared, status: "prepared", error: decodeProofPayError(error) });
+        const journalEntry = journal.currentEntry(prepared.intent.intentHash);
+        if (walletRequestOpened && journalEntry?.status === "awaiting_wallet") {
+          if (isExplicitWalletRejection(error)) {
+            journal.transition(prepared.intent.intentHash, "prepared", null);
+            setPrepared({
+              ...prepared,
+              status: "prepared",
+              transactionHash: null,
+              error: decodeProofPayError(error),
+            });
+          } else {
+            setPrepared({
+              ...prepared,
+              status: "awaiting_wallet",
+              transactionHash: null,
+              error: "The wallet returned no transaction hash, so ProofPay cannot prove whether it broadcast. This intent remains blocked in this browser and cannot be signed again.",
+            });
+          }
+        } else if (journalEntry && journalEntry.status !== "abandoned") {
+          const message = error instanceof Error && !/execution reverted|simulation/iu.test(error.message)
+            ? error.message
+            : decodeProofPayError(error);
+          setPrepared({
+            ...prepared,
+            status: journalEntry.status,
+            transactionHash: journalEntry.transactionHash,
+            error: message,
+          });
+        } else {
+          setPrepared({
+            ...prepared,
+            status: "prepared",
+            transactionHash: null,
+            error: decodeProofPayError(error),
+          });
+        }
       } else {
         setPrepared({
           ...prepared,
@@ -512,11 +635,16 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
           error: "The transaction hash is stored, but its receipt could not be read yet. Reload to reconcile it before trying again.",
         });
       }
+    } finally {
+      if (signingIntentRef.current === prepared.intent.intentHash) {
+        signingIntentRef.current = null;
+      }
     }
   };
 
   const abandonPrepared = () => {
-    if (!prepared || prepared.status !== "prepared") return;
+    if (!prepared || prepared.status !== "prepared" || signingIntentRef.current !== null) return;
+    if (journal.currentEntry(prepared.intent.intentHash)?.status !== "prepared") return;
     journal.abandon(prepared.intent.intentHash);
     setPrepared(null);
   };
@@ -652,7 +780,7 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
             ? `The escrow no longer covers the milestone target. No payment has been released. The exact shortfall is ${formatFxrpAmount(releaseQuote.topUpFxrp)}.`
             : "The current lock covers the previewed payout. No payment has been released by this preview."}</p>
           <dl className="intent-list">
-            <div><dt>Current locked amount</dt><dd>{formatFxrpAmount(lockedFxrp)}</dd></div>
+            <div><dt>Current locked amount</dt><dd>{formatFxrpAmount(releaseQuote.lockedFxrp)}</dd></div>
             <div><dt>Required freelancer payout</dt><dd>{formatFxrpAmount(releaseQuote.payoutFxrp)}</dd></div>
             <div><dt>Client refund</dt><dd>{formatFxrpAmount(releaseQuote.refundFxrp)}</dd></div>
             <div><dt>Exact top-up</dt><dd>{formatFxrpAmount(releaseQuote.topUpFxrp)}</dd></div>

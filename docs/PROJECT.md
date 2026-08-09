@@ -1,6 +1,6 @@
 # ProofPay project brief
 
-Last verified: 2026-08-04
+Last verified: 2026-08-09
 
 ## Product
 
@@ -39,7 +39,7 @@ Known limitation: the MVP has no arbitration or automatic release if a client re
 
 No marketplace, profiles, messaging, ratings, recurring invoices, multiple milestones, payroll, accounting, fiat payout, bank integration, multiple currencies or chains, DAO, arbitration, AI feature, token charts, backend database, indexer, subgraph, Redis, Docker infrastructure, microservices, workers, proxies, factories, generic oracle framework, component library, or generalized payments SDK.
 
-## Financial rules reserved for later implementation
+## Financial rules reserved in Phase 0 and now implemented
 
 - USD amounts use six decimals.
 - Contract calculations use integer arithmetic only.
@@ -50,7 +50,10 @@ No marketplace, profiles, messaging, ratings, recurring invoices, multiple miles
 - Only the client funds, tops up, and releases; only the freelancer submits evidence.
 - No unrestricted admin withdrawal exists.
 
-These rules describe the approved target behavior. They are not implemented or proved in Phase 0.
+These rules described the approved target behavior in Phase 0. The contract implemented them in
+Phase 3A, Phase 3B supplied deterministic economic, fuzz, and stateful invariant evidence, and
+Phases 4A and 4B supplied the Coston2 deployment and first settlement receipt. Those later records
+do not convert testnet evidence into an audit or production-readiness claim.
 
 ## Phase gates
 
@@ -64,17 +67,24 @@ Pass only when the official mechanism resolves FXRP and FTSOv2, XRP/USD is read 
 
 If manual signing is required, the durable status becomes `WAITING_FOR_USER`. If official operations cannot be proved after a bounded investigation, the probe fails and product implementation stops.
 
-## Risks and current unknowns
+## Phase 0 risk dispositions
 
-- Two test wallets may not both be available in the browser wallet or the sender may lack FXRP/C2FLR.
-- Current FAssets addresses and interfaces must be resolved rather than assumed.
-- The reference demo declares MIT in its README but supplies no license text; its code is not reusable unless that ambiguity is resolved.
-- DoraHacks displays an exact deadline in the viewer's timezone but does not label the event's source timezone.
-- The event page gives no judging weights and no explicit repository-visibility requirement.
+The following items are no longer presented as active implementation blockers. “Resolved” means a
+project decision or evidence boundary is recorded; it does not claim that an external publisher
+supplied information that remains unpublished.
 
-## Later interface specificity checklist
+| Former unknown | Disposition | Decision | Supporting phase or artifact |
+| --- | --- | --- | --- |
+| Test-wallet availability and FXRP/C2FLR balances | Resolved | Reuse two disposable owner-only Coston2 wallets; keep all secrets outside the repository. | Phase 1 wallet and confirmed-transfer record; `artifacts/flare-probe.json` |
+| Current FAssets addresses and interfaces | Resolved | Resolve `AssetManagerFXRP`, FXRP, and FTSOv2 through the official Coston2 registry; verify code and token decimals; pass deployment-specific oracle values explicitly. | Phase 1 probe; Phase 4A `deployment/coston2.json` |
+| Reference-demo license ambiguity | Resolved for ProofPay | Treat the source as non-reusable because no license text was supplied; copy or materially adapt none of it. | Phase 0 `docs/UPSTREAM.md` and repository comparison |
+| Hackathon deadline source timezone | Resolved as an evidence boundary | Record the canonical date and viewer-rendered Africa/Lagos time, do not invent a publisher timezone, and recheck before submission. Product milestone deadlines use explicit IANA timezone conversion. | Phase 0 `docs/STATUS.md`; Phase 5C deadline tests |
+| Judging weights and repository visibility | Resolved as an evidence boundary | Record that no weights or explicit public-repository requirement are published; make no stronger submission claim. | Phase 0 canonical-page review in `docs/STATUS.md` |
+| Interface direction and acceptance criteria | Resolved | Use the ProofPay-specific editorial settlement document, settlement rail, role-aware action band, technical-evidence disclosures, responsive rules, and explicit avoid-list. | Phases 5A–5C; `docs/INTERFACE_SPEC.md`; tracked interface artifacts |
 
-When Phase 5 is authorized, specify the product, user, visual thesis, typography, page sequence, interaction, motion, responsive behavior, and explicit avoid-list. This is the only method retained from the referenced landing-page prompt thread; none of its preset visual styles are adopted.
+The reference thread's specificity checklist was the only retained method; none of its preset
+visual styles were adopted. Upstream source reuse remains prohibited unless its license evidence
+changes, and the unpublished event timezone and judging weights must not be guessed.
 
 ## Canonical sources
 
@@ -84,4 +94,3 @@ When Phase 5 is authorized, specify the product, user, visual thesis, typography
 - DoraHacks Code of Conduct (updated 2024-12-04): https://dorahacks.io/legal/code-of-conduct
 - Flare Developer Hub: https://dev.flare.network/
 - Landing-page specificity reference: https://x.com/aiwithmayank/status/2080228272911389138
-

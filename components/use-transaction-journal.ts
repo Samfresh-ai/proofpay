@@ -5,19 +5,19 @@ import type { Hash } from "viem";
 
 import {
   abandonPreparedIntent,
+  applySubmittedReceiptResolutions,
+  beginWalletRequest,
+  collectSubmittedReceiptResolutions,
   findBlockingJournalEntry,
-  journalEntryFromIntent,
   loadJournal,
-  reconcileSubmittedEntries,
+  prepareJournalIntent,
+  PROOFPAY_JOURNAL_KEY,
   saveJournal,
   transitionJournalEntry,
-  upsertJournalEntry,
+  type JournalBlockingInput,
   type JournalEntry,
 } from "@/lib/transaction-journal";
-import type {
-  ProofPayTransactionAction,
-  TransactionIntent,
-} from "@/lib/transaction-intents";
+import type { TransactionIntent } from "@/lib/transaction-intents";
 
 interface ReceiptClient {
   getTransactionReceipt(parameters: { hash: Hash }): Promise<{ status: "success" | "reverted" }>;
@@ -49,16 +49,33 @@ export function useTransactionJournal(receiptClient?: ReceiptClient) {
   }, []);
 
   useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key !== PROOFPAY_JOURNAL_KEY || event.storageArea !== window.localStorage) return;
+      const loaded = loadJournal(window.localStorage);
+      entriesRef.current = loaded;
+      setEntries(loaded);
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => {
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!ready || !receiptClient) return;
     let cancelled = false;
-    void reconcileSubmittedEntries(entries, async (hash) => {
+    const submittedSnapshot = entriesRef.current;
+    void collectSubmittedReceiptResolutions(submittedSnapshot, async (hash) => {
       try {
         return await receiptClient.getTransactionReceipt({ hash });
       } catch {
         return null;
       }
-    }).then((next) => {
-      if (cancelled || JSON.stringify(next) === JSON.stringify(entries)) return;
+    }).then((resolutions) => {
+      if (cancelled || resolutions.length === 0) return;
+      const current = entriesRef.current;
+      const next = applySubmittedReceiptResolutions(current, resolutions);
+      if (JSON.stringify(next) === JSON.stringify(current)) return;
       commitEntries(next);
     });
     return () => {
@@ -67,9 +84,13 @@ export function useTransactionJournal(receiptClient?: ReceiptClient) {
   }, [commitEntries, entries, ready, receiptClient]);
 
   const prepare = useCallback((intent: TransactionIntent) => {
-    const entry = journalEntryFromIntent(intent);
-    commitEntries(upsertJournalEntry(entriesRef.current, entry));
-    return entry;
+    const prepared = prepareJournalIntent(entriesRef.current, intent);
+    commitEntries(prepared.entries);
+    return prepared.entry;
+  }, [commitEntries]);
+
+  const beginWallet = useCallback((intentHash: Hash) => {
+    commitEntries(beginWalletRequest(entriesRef.current, intentHash));
   }, [commitEntries]);
 
   const transition = useCallback((intentHash: Hash, status: JournalEntry["status"], transactionHash?: Hash | null) => {
@@ -83,11 +104,13 @@ export function useTransactionJournal(receiptClient?: ReceiptClient) {
     commitEntries(abandonPreparedIntent(entriesRef.current, intentHash));
   }, [commitEntries]);
 
-  const blocking = useCallback((input: {
-    account: string;
-    invoiceId: string;
-    action: ProofPayTransactionAction;
-  }) => findBlockingJournalEntry(entries, input), [entries]);
+  const blocking = useCallback((input: JournalBlockingInput) => (
+    findBlockingJournalEntry(entriesRef.current, input)
+  ), []);
 
-  return { abandon, blocking, entries, prepare, ready, transition };
+  const currentEntry = useCallback((intentHash: Hash) => (
+    entriesRef.current.find((entry) => entry.intentHash === intentHash) ?? null
+  ), []);
+
+  return { abandon, beginWallet, blocking, currentEntry, entries, prepare, ready, transition };
 }

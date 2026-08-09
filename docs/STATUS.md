@@ -4,13 +4,15 @@ Updated: 2026-08-09
 
 ## Current state
 
-- Active phase: Phase 0 through Phase 5C complete.
-- Overall decision: `PHASE_5C_PASS`; the browser-proved settlement interface has corrected deadline
-  handling, one stable funding intent, a deterministic wallet hydration boundary, and refined
-  settlement evidence. The next decision is whether to authorize public deployment.
+- Active phase: Phase 0 through Phase 5D complete.
+- Overall decision: `READY_FOR_PHASE_6A`. Phase 5D proved that one confirmed top-up does not block a
+  distinct later quote while exact-intent replay, unresolved-submission blocking, and every
+  one-time action protection remain intact. Phase 6A still requires its own explicit authorization;
+  no public deployment occurred here.
 - Application UI: `/app`, `/invoice/[id]`, and `/receipt/[id]` provide role-aware wallet action
-  preparation and verified read-only settlement records. Phase 5C added no transaction, contract,
-  backend, indexer, database, authentication, or analytics behavior.
+  preparation and verified read-only settlement records. Phase 5D changes only browser journal and
+  action policy plus the failing transaction-button hover contrast; it adds no contract, backend,
+  indexer, database, authentication, analytics, or public-deployment behavior.
 - Escrow contract: core implemented, fuzzed, statefully invariant-tested, deployed to
   Coston2, and source-verified; not audited or claimed production-ready.
 - Foundry: pinned production contract, deterministic mocks, 56 Phase 3A unit tests, seven passing
@@ -18,10 +20,25 @@ Updated: 2026-08-09
 - Deployment: `ProofPayEscrow` is confirmed at
   `0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21` on Coston2 chain `114`; deployment and verification
   evidence is in `deployment/coston2.json`.
-- Live receipt: invoice `1` moved `CREATED -> FUNDED -> SUBMITTED -> RELEASED`; payout and refund
-  reconcile to its lock, and active liabilities returned to zero. Evidence is in
-  `docs/LIVE_RECEIPT.md` and the Phase 4B artifacts.
+- Live receipts: invoices `1` and `2` each moved
+  `CREATED -> FUNDED -> SUBMITTED -> RELEASED`; their payout and refund values reconcile to their
+  locks, active liabilities returned to zero, and both have preserved receipt locators. Evidence is
+  in `docs/LIVE_RECEIPT.md`, `artifacts/coston2-settlement-receipt.json`, and
+  `artifacts/coston2-browser-settlement-receipt.json`.
 - Repository secrets: none. Disposable test-wallet secrets remain outside the repository in an owner-only local file; no secret value is recorded in project evidence.
+
+## Source-of-truth precedence
+
+When current records disagree, use this order:
+
+1. deployed contract behavior and confirmed chain receipts;
+2. committed machine artifacts;
+3. current source and tests;
+4. this durable status;
+5. historical design documents.
+
+Historical documents remain useful decision records, but their future-tense phase boundaries do not
+override an implemented contract, a committed verifier artifact, or a confirmed receipt.
 
 ## Phase 0 — rules, licensing, and repository setup
 
@@ -797,8 +814,9 @@ Gate: `PASS` with one nonblocking delivery-window limitation.
 - Funding locked `2.126887 FXRP`. Release paid `1.933309 FXRP` and refunded `0.193578 FXRP` with no
   top-up. Invoice state is `RELEASED`; liabilities and contract FXRP balance are zero; final client
   and freelancer balances are `3.246943` and `6.753057 FXRP`.
-- `/receipt/2` displayed the reconciled result from the preserved browser locator. The separate
-  read-only verifier passed at block `33804870`, and the later replay run changed no broadcast count.
+- `/receipt/2` displayed the reconciled result from the preserved browser locator. The committed
+  `artifacts/browser-settlement-verification.json` records the separate read-only verifier at block
+  `33805289`, and the later replay run changed no broadcast count.
 
 ### Validation
 
@@ -867,9 +885,10 @@ Gate: `PASS`
 - `npm run test:e2e:production`: one production hydration test passed with zero warnings.
 - `npm run test:e2e:live`: three read-only invoice/receipt tests passed with desktop, mobile,
   expanded-evidence accessibility checks and no transaction controls.
-- Invoice 1 reconciliation and invoice 2 browser-settlement verification passed together at pinned
-  Coston2 block `33807030`; both remain released, liabilities and contract FXRP balance remain zero,
-  and no transaction was sent.
+- A later Phase 5C live read-only reconciliation is recorded in this status at pinned Coston2 block
+  `33807030`; both invoices remained released, liabilities and contract FXRP balance remained zero,
+  and no transaction was sent. No standalone machine-verification artifact for block `33807030` is
+  committed, so it does not replace the invoice `2` verifier artifact's block `33805289`.
 - The exact browser-secret scan passed. Protected contract, deployment, and existing receipt
   evidence were unchanged. Seven visually inspected screenshots are in
   `artifacts/interface-refinement/`. `git diff --check` passed.
@@ -884,4 +903,65 @@ cross-device coordination.
 ### Phase completion
 
 - Commit subject on PASS: `refactor: refine ProofPay settlement experience`.
-- Next decision: `READY FOR PUBLIC DEPLOYMENT`.
+- The later Phase 5D defect review superseded the recorded next decision; public deployment is not
+  authorized while the repeated-top-up journal gate is open.
+
+## Phase 5D — repeated top-up journal and documentation reconciliation
+
+Gate: `PASS`
+
+### Root cause and required behavior
+
+- The deployed contract intentionally permits another exact top-up if a later XRP/USD observation
+  makes the already topped-up `SUBMITTED` invoice underfunded again.
+- The Phase 5B1 browser journal keyed confirmed non-approval actions primarily by account, invoice,
+  and action. A confirmed `top_up` therefore looked permanently complete for that invoice and
+  blocked a legitimate later quote.
+- The corrected policy gives top-up its own deterministic intent identity over chain, contract,
+  invoice, client account, action, observed locked FXRP, required top-up, accepted maximum, quote
+  deadline, and price value/decimals/timestamp. Confirmed or reverted history consumes that exact
+  broadcast hash without blocking a distinct later quote; abandoned unsigned history may be
+  prepared again.
+- Prepared state blocks the same intent. Wallet-open uncertainty blocks an overlapping same-scope
+  top-up from signing, and any submitted top-up for the same account, chain, contract, and invoice
+  must reconcile before another intent can be created. Reload preserves unresolved state, and
+  account, chain, contract, or invoice changes invalidate the active prepared intent.
+  Legacy or malformed wallet-open/submitted records that cannot prove the complete quote identity
+  remain fail-closed, scope-blocking quarantine; they are never trusted for exact-hash matching.
+- A connected client sees top-up only for a `SUBMITTED` invoice when a fresh release quote reports a
+  nonzero shortfall and no applicable intent remains pending. A zero-shortfall quote offers no
+  top-up.
+- Funding, evidence submission, release, cancellation, and refund retain one-time protections.
+  Approval remains allowance-driven and exact; no unlimited approval path is introduced.
+
+### Validation and evidence boundary
+
+- `npm run lint`, `npm run typecheck`, `npm run test:unit`, and `npm run build` passed. The final
+  unit suite has 58 tests, including ten Phase 5D tests that vary each required identity field,
+  enforce the status/hash state machine, preserve terminal history, quarantine unresolved legacy
+  records, merge delayed receipt results into the current journal, and retain all one-time guards.
+- `npm run test:e2e` passed 15 deterministic browser tests. Five focused top-up cases include two
+  synchronous clicks producing one send, two distinct confirmed quote hashes remaining in history,
+  exact-hash replay rejection, a zero-shortfall release, and an unresolved submitted receipt that
+  survives reload and blocks a later quote before allowance or approval. An ambiguous provider
+  failure after accepting a send but before returning its hash remains `awaiting_wallet`,
+  unsignable across reload, and distinct from an explicit `4001` rejection. Axe found no
+  serious/critical issue in the top-up state; the 390-pixel overflow and keyboard-focus checks
+  passed. The production hydration test also passed.
+- Current read-only Coston2 reconciliation passed for invoice `1` at block `33808897`; an invoice
+  `2` public-only verifier run from a temporary directory passed at block `33808919`. These
+  Phase 5D run locators are status evidence only and do not replace the committed invoice `2`
+  machine artifact at block `33805289`. Neither check sent a transaction or modified a receipt.
+- The historical Phase 4B `verify:live:coston2` script still compares current party balances to
+  invoice `1`'s post-settlement snapshot. It stops at that stale comparison because invoice `2`
+  later changed the same wallets; the current invoice `1` reconciliation and committed historical
+  receipt remain the applicable evidence. Phase 5D does not modify that protected verifier.
+- Exact browser-secret scanning, initialized-submodule cleanliness, protected contract/deployment/
+  receipt byte checks, and `git diff --check` passed. No protected artifact changed.
+- Repeated top-up remains deterministic simulated-price evidence only. No live
+  Coston2 transaction, second top-up, contract change, redeployment, or new receipt artifact is
+  authorized or claimed.
+- The six existing project documents are reconciled in place while their historical phase decisions
+  and live evidence remain preserved.
+- Commit subject on PASS: `fix: support repeated ProofPay top-ups`.
+- Next decision: `READY FOR PHASE 6A`.

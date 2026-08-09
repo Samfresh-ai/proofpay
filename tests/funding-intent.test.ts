@@ -12,7 +12,11 @@ import {
 } from "../lib/funding-intent.js";
 import { PROOFPAY_CHAIN_ID } from "../lib/proofpay-contract.js";
 import { buildApprovalIntent, buildFundingPlan } from "../lib/transaction-intents.js";
-import { journalEntryFromIntent, transitionJournalEntry } from "../lib/transaction-journal.js";
+import {
+  beginWalletRequest,
+  journalEntryFromIntent,
+  transitionJournalEntry,
+} from "../lib/transaction-journal.js";
 
 const CLIENT = getAddress("0x2222222222222222222222222222222222222222");
 const OTHER = getAddress("0x3333333333333333333333333333333333333333");
@@ -105,7 +109,11 @@ describe("ProofPay Phase 5C frozen funding intent", () => {
       invoiceId: 3n,
       maximumFxrp: BigInt(frozen.maximumFxrp),
     }));
-    const confirmed = transitionJournalEntry([approval], approval.intentHash, "confirmed", {
+    const awaiting = beginWalletRequest([approval], approval.intentHash);
+    const submitted = transitionJournalEntry(awaiting, approval.intentHash, "submitted", {
+      transactionHash: TX_HASH,
+    });
+    const confirmed = transitionJournalEntry(submitted, approval.intentHash, "confirmed", {
       transactionHash: TX_HASH,
     });
     expect(confirmed[0]?.status).toBe("confirmed");

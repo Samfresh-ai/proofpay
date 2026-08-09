@@ -1,15 +1,39 @@
 # ProofPay contract architecture
 
-Last verified: 2026-08-05
+Last verified: 2026-08-09
 
-Phase 2 locks the contract model and compile-time integration surface. It does not implement,
-deploy, or claim to secure an escrow contract.
+## Current status and document role
 
-## Scope
+This document began as the Phase 2 design locked in commit `c3e850a`. Historical future-tense
+language is retained below because it records the decisions that implementation was reviewed
+against; it is not the current deployment status.
 
-The locked MVP has one future Coston2 escrow, one FXRP token, one XRP/USD FTSOv2 feed, and one
-milestone per invoice. A freelancer defines a USD target and delivery deadline. The named client
-locks FXRP, the freelancer submits immutable evidence, and the client decides whether to release.
+The current system has four distinct evidence layers:
+
+- `ProofPayEscrow` was implemented in `contracts/src/ProofPayEscrow.sol` at commit `7244d3e` and
+  completed deterministic, fuzz, and stateful invariant testing at commit `9a32091`.
+- The reviewed `9a32091` bytecode is deployed and source-verified on Coston2 at
+  `0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21`; `deployment/coston2.json` is the deployment record.
+- The deployed constructor has four immutable dependencies: FXRP, FTSOv2, the XRP/USD feed ID, and
+  the configurable maximum price age. Its price path preflights `calculateFeeById`, rejects a
+  nonzero result with `UnsupportedFtsoFee`, and accounts for aggregate active FXRP liabilities.
+- The browser application now supplies direct pinned reads, verified receipts for preserved
+  invoice `1` and invoice `2` locators, and role-aware wallet action preparation. Browser behavior
+  and its local journal do not alter the contract trust boundary. The current deterministic suite
+  passes 58 unit tests and 15 simulated browser tests, including repeated-top-up race, ambiguous
+  wallet-result fail-closed behavior, reload,
+  accessibility, and narrow-screen coverage; production hydration and read-only invoice
+  reconciliation also pass.
+
+These are Coston2 testnet and automated-test facts, not an audit, legal-escrow claim, human
+usability study, or production-readiness claim.
+
+## Historical Phase 2 scope
+
+The locked Phase 2 MVP envisioned one Coston2 escrow, one FXRP token, one XRP/USD FTSOv2 feed, and
+one milestone per invoice. A freelancer defines a USD target and delivery deadline. The named
+client locks FXRP, the freelancer submits immutable evidence, and the client decides whether to
+release.
 
 The MVP has no mediator, arbitration, automatic release, admin, fee, treasury, pause mechanism,
 upgradeability, factory, batch operation, or second token. The client can refuse release after
@@ -57,9 +81,9 @@ Primary interface references:
 
 Wallets sign their own transactions. ProofPay never receives a private key, mnemonic, or seed.
 
-## Deployment resolution
+## Deployment resolution: historical baseline and implemented result
 
-The later deployment script must:
+The historical Phase 2 baseline required the later deployment script to:
 
 1. require `block.chainid == 114`;
 2. bind `IFlareContractRegistry` to the official Coston2 registry;
@@ -69,10 +93,13 @@ The later deployment script must:
 6. resolve `FtsoV2` and reject a zero or code-less address;
 7. pass the resolved FXRP and FTSOv2 addresses to the escrow constructor.
 
-The contract stores those two dependencies as immutables. It does not hardcode a resolved FXRP or
-FTSOv2 address, and it does not look up mutable protocol addresses during settlement. The chain-ID
-check is repeated in the constructor so a misconfigured script cannot deploy the Coston2-only MVP
-to another chain.
+Phase 3A retained those resolution checks and expanded the constructor boundary. The implemented
+and deployed contract stores four values as immutables: the resolved FXRP address, resolved FTSOv2
+address, verified XRP/USD feed ID, and a nonzero maximum price age. It does not look up mutable
+protocol addresses during settlement. The chain-ID check remains in the constructor so a
+misconfigured script cannot deploy the Coston2-only MVP to another chain. Phase 4A completed this
+path with a 30-second deployed maximum age; the exact constructor values, creation receipt, runtime
+hash, and source-verification result are preserved in `deployment/coston2.json`.
 
 The Coston2 registry address, chain ID, and XRP/USD feed ID are network identifiers rather than
 user or deployment output. The compile probe pins only those identifiers.
@@ -185,20 +212,24 @@ method is payable and not declared `view`; therefore contract quote functions ar
 although a frontend can preview them through `eth_call` simulation.
 
 The current block-latency feed is free to query and Phase 1 proved a call with zero native value.
-ProofPay forwards no native value and has no C2FLR custody or withdrawal path. If the feed later
-requires a nonzero fee, oracle-dependent actions revert until the architecture is revised.
+Before every feed read, the implemented contract calls `calculateFeeById(xrpUsdFeedId)`. A failed
+fee preflight raises `PriceReadFailed`; a nonzero fee raises `UnsupportedFtsoFee`. ProofPay then
+calls `getFeedById` with zero native value and has no C2FLR custody or withdrawal path. If the feed
+later requires a nonzero fee, oracle-dependent actions fail closed until the architecture is
+revised.
 
-`MAX_PRICE_AGE` is fixed at 30 seconds. Flare documents block-latency updates at approximately
-1.8 seconds, so 30 seconds tolerates roughly sixteen expected update opportunities while still
-failing closed well outside normal cadence. This is a ProofPay risk rule, not a Flare-mandated
-constant.
+The maximum price age is a nonzero constructor immutable rather than a compiled constant. The
+Coston2 deployment configures it to 30 seconds. Flare documents block-latency updates at
+approximately 1.8 seconds, so that deployed value tolerates roughly sixteen expected update
+opportunities while still failing closed well outside normal cadence. This is a ProofPay risk rule,
+not a Flare-mandated constant.
 
 Each oracle read accepts only:
 
 - `value > 0`;
 - `0 <= decimals <= 18`;
 - a nonzero timestamp no later than `block.timestamp`;
-- an age no greater than 30 seconds.
+- an age no greater than the configured `maximumPriceAge` (`30` seconds in the deployment record).
 
 A zero, future, malformed, stale, or reverting read blocks quotes, funding, top-up, and release.
 There is no cached fallback and no general-purpose oracle framework. Cancellation, evidence
@@ -211,7 +242,7 @@ The integer formulas and four release scenarios are locked in `CONTRACT_SPEC.md`
 | Threat | Locked response |
 | --- | --- |
 | Reentrancy | `SafeERC20`, `ReentrancyGuard`, checks-effects-interactions, and exact token-delta checks on financial entry points |
-| Stale FTSO data | Timestamp validation and a fixed 30-second maximum age; no cache |
+| Stale FTSO data | Timestamp validation and a nonzero immutable maximum age, deployed as 30 seconds; no cache |
 | Zero or malformed price | Reject zero value, future/zero timestamp, and decimals outside `0..18` |
 | Rounding underpayment | Full-precision multiplication/division with upward rounding for every required amount |
 | Quote movement before confirmation | Transaction rereads the feed and enforces caller-supplied maximum plus absolute quote deadline |
@@ -242,9 +273,9 @@ Direct unsolicited FXRP can make the contract balance greater than active liabil
 not a valid invariant for an ERC-20 contract because a sender can transfer tokens without calling
 ProofPay.
 
-## Pinned compile probe
+## Historical Phase 2 pinned compile probe
 
-The Foundry project under `contracts/` pins:
+At commit `c3e850a`, the Foundry project under `contracts/` pinned:
 
 | Dependency | Pin | Required surface |
 | --- | --- | --- |
@@ -252,13 +283,16 @@ The Foundry project under `contracts/` pins:
 | OpenZeppelin Contracts | `v5.7.0` / `cab19933c33c2ad1d4c7a84864a3601dddfd16f3` | `IERC20`, `SafeERC20`, `ReentrancyGuard` |
 | forge-std | `v1.16.2` / `bf647bd6046f2f7da30d0c2bf435e5c76a780c1b` | Phase 3 Foundry tests and the narrow Phase 2 constant check |
 
-`Phase2InterfaceProbe` is abstract, has no external entry point, and cannot be deployed. It proves
+The historical `Phase2InterfaceProbe` was abstract, had no external entry point, and could not be
+deployed. It proved
 only that the pinned project compiles the registry-to-AssetManager-to-ERC-20 resolution, production
 FTSOv2 read, SafeERC20 call, and ReentrancyGuard modifier. It is not `ProofPayEscrow` and contains
-no invoice or settlement logic.
+no invoice or settlement logic. Phase 3A removed that probe after the production escrow and its
+tests replaced it; commit history preserves the Phase 2 evidence.
 
-## Phase boundary
+## Historical Phase 2 boundary
 
-Phase 3 may implement the exact specification and test matrix in `CONTRACT_SPEC.md`. It must not
-infer that the Phase 2 compile probe proves contract behavior, deployed addresses, economic safety,
-or production security.
+Phase 2 authorized Phase 3 to implement the specification and test matrix in `CONTRACT_SPEC.md`.
+The compile probe alone never proved contract behavior, deployed addresses, economic safety, or
+production security. Those later claims are limited to the implemented source, completed automated
+tests, Coston2 deployment record, and preserved receipts described in the current-status note.

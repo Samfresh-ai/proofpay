@@ -1,11 +1,21 @@
 # ProofPay escrow contract specification
 
-Last verified: 2026-08-05
+Last verified: 2026-08-09
 
-This is the implementation contract for Phase 3. Solidity business logic does not exist in Phase
-2. The abstract interface probe under `contracts/src/` is not the escrow.
+This document was the Phase 2 implementation baseline locked in commit `c3e850a`; its integer
+rules, state machine, authority model, and lifecycle surface remain the review baseline. The
+deployed implementation is now `contracts/src/ProofPayEscrow.sol`, introduced in commit `7244d3e`,
+completed with economic testing in `9a32091`, and deployed from the reviewed `9a32091` bytecode at
+`0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21`. The creation receipt and exact deployed
+configuration are preserved in `deployment/coston2.json`.
+
+Where the early baseline differs from implementation, the explicit implementation deltas below,
+the deployed contract, and its receipts take precedence. The specification remains behavioral; it
+is not a line-by-line code transcription.
 
 ## Constants and dependencies
+
+The early Phase 2 baseline fixed the following network and economic values:
 
 ```solidity
 uint256 constant COSTON2_CHAIN_ID = 114;
@@ -13,17 +23,23 @@ uint8 constant USD_DECIMALS = 6;
 uint8 constant FXRP_DECIMALS = 6;
 uint16 constant PROTECTION_BPS = 1_000;
 uint16 constant BPS_DENOMINATOR = 10_000;
-uint64 constant MAX_PRICE_AGE = 30 seconds;
 uint256 constant MAX_EVIDENCE_URI_BYTES = 256;
-
-bytes21 constant XRP_USD_FEED_ID =
-    0x015852502f55534400000000000000000000000000;
 ```
 
-The future contract receives one `IERC20Metadata` FXRP address and one `FtsoV2Interface` address
-as constructor arguments resolved by the Coston2 deployment script. Both are immutable. The
-constructor requires chain ID `114`, nonzero addresses with code, and FXRP decimals equal to six.
-No party address is a constructor argument.
+The implementation makes the deployment-specific oracle policy explicit through four immutables:
+
+```solidity
+IERC20Metadata public immutable fxrp;
+FtsoV2Interface public immutable ftsoV2;
+bytes21 public immutable xrpUsdFeedId;
+uint64 public immutable maximumPriceAge;
+```
+
+The deployment script resolves FXRP and FTSOv2 on Coston2, supplies the verified XRP/USD feed ID,
+and supplies a nonzero maximum price age. The deployed values are the official resolved FXRP and
+FTSOv2 addresses, feed ID `0x015852502f55534400000000000000000000000000`, and `30` seconds.
+The constructor requires chain ID `114`, code-bearing token and oracle addresses, nonzero feed and
+age values, and six FXRP decimals. No party address is a constructor argument.
 
 The implementation uses OpenZeppelin `SafeERC20`, `ReentrancyGuard`, and `Math.mulDiv`. It has no
 owner or admin role.
@@ -58,6 +74,7 @@ struct Invoice {
 }
 
 mapping(uint256 invoiceId => Invoice invoice) public invoices;
+uint256 public activeFxrpLiabilities;
 uint256 private nextInvoiceId = 1;
 ```
 
@@ -69,6 +86,12 @@ an unused mapping entry.
 preserved after release or refund as historical receipt data. The active liability is zero for a
 terminal status.
 
+`activeFxrpLiabilities` is the aggregate lock across `FUNDED` and `SUBMITTED` invoices. Funding and
+top-up increase it; release and missed-delivery refund remove the invoice's complete active lock.
+Entry and exit balance checks fail closed if the current contract FXRP balance is below the
+aggregate liability. Direct token donations may make balance exceed liability but never become an
+invoice claim.
+
 Fields written at creation become immutable after funding. Funding, evidence, and release
 observations are each written at most once. Top-up does not overwrite the original funding
 observation.
@@ -76,16 +99,22 @@ observation.
 ## Constructor
 
 ```solidity
-constructor(IERC20Metadata fxrp_, FtsoV2Interface ftsoV2_);
+constructor(
+    IERC20Metadata fxrp_,
+    FtsoV2Interface ftsoV2_,
+    bytes21 xrpUsdFeedId_,
+    uint64 maximumPriceAge_
+);
 ```
 
 Required behavior:
 
 1. Revert unless `block.chainid == 114`.
 2. Reject either zero address or either address without contract code.
-3. Require `fxrp_.decimals() == 6`.
-4. Store both dependencies as immutables.
-5. Create no owner, admin, treasury, or withdrawal authority.
+3. Reject a zero feed ID or zero maximum price age.
+4. Require `fxrp_.decimals() == 6`.
+5. Store all four dependencies as immutables.
+6. Create no owner, admin, treasury, or withdrawal authority.
 
 The deployment script resolves the token through
 `IFlareContractRegistry -> AssetManagerFXRP -> IAssetManager.fAsset()` and resolves `FtsoV2`
@@ -317,31 +346,40 @@ use it to reclaim submitted work, and the freelancer has no unilateral release p
 
 ## Price validity and freshness
 
-Every quote, funding, top-up, or release calls:
+Every quote, funding, top-up, or release first calls:
 
 ```solidity
-ftsoV2.getFeedById(XRP_USD_FEED_ID)
+ftsoV2.calculateFeeById(xrpUsdFeedId)
 ```
 
-with zero native value and consumes all three returned values. One internal
-`_readFreshXrpUsdPrice()` helper is enough; no generic oracle adapter is introduced.
+and requires the result to be zero. It then calls:
+
+```solidity
+ftsoV2.getFeedById{value: 0}(xrpUsdFeedId)
+```
+
+and consumes all three returned values. One internal `_readFreshXrpUsdPrice()` helper performs
+both operations; no generic oracle adapter is introduced.
 
 Validation order:
 
-1. If the call reverts, raise `PriceReadFailed` and do not use cached data.
-2. Reject `value == 0`.
-3. Reject `decimals < 0` or `decimals > 18`.
-4. Reject `timestamp == 0` or `timestamp > block.timestamp`.
-5. Reject `block.timestamp - timestamp > 30 seconds` as stale.
+1. If fee calculation reverts, raise `PriceReadFailed` and make no feed read.
+2. If the calculated fee is nonzero, raise `UnsupportedFtsoFee(fee)` and make no feed read.
+3. If the zero-value feed call reverts, raise `PriceReadFailed` and do not use cached data.
+4. Reject `value == 0`.
+5. Reject `decimals < 0` or `decimals > 18`.
+6. Reject `timestamp == 0` or `timestamp > block.timestamp`.
+7. Reject `block.timestamp - timestamp > maximumPriceAge` as stale.
 
-An observation exactly 30 seconds old is accepted. The returned timestamp is the feed update
-timestamp, not the transaction timestamp. The raw value and decimals are returned by quote
-functions and persisted for funding or successful release.
+An observation exactly `maximumPriceAge` old is accepted. The deployed maximum is 30 seconds. The
+returned timestamp is the feed update timestamp, not the transaction timestamp. The raw value and
+decimals are returned by quote functions and persisted for funding or successful release.
 
 Flare documents block-latency feeds as updating approximately every 1.8 seconds. Thirty seconds is
 a ProofPay fail-closed policy with roughly sixteen expected update opportunities, not an official
-guarantee. If the currently free feed starts requiring a fee, zero-value reads revert and the MVP
-halts price-dependent actions rather than accepting C2FLR it cannot withdraw.
+guarantee. If the currently free feed starts requiring a fee, the explicit fee preflight raises
+`UnsupportedFtsoFee` and the MVP halts price-dependent actions rather than accepting C2FLR it
+cannot withdraw.
 
 ## Price and rounding math
 
@@ -493,6 +531,7 @@ error ExpiredQuote(uint64 quoteDeadline, uint256 currentTimestamp);
 error PriceReadFailed();
 error StalePrice(uint64 priceTimestamp, uint256 currentTimestamp, uint64 maximumAge);
 error InvalidPrice(uint256 value, int8 decimals, uint64 timestamp);
+error UnsupportedFtsoFee(uint256 fee);
 error AmountAboveClientMaximum(uint256 requiredFxrp, uint256 maximumFxrp);
 error InsufficientFXRP(uint256 availableFxrp, uint256 requiredFxrp);
 error UnexpectedFXRPReceived(uint256 expectedFxrp, uint256 receivedFxrp);
@@ -518,13 +557,15 @@ Financial functions are `nonReentrant` and follow this order:
 
 1. verify existence, state, role, deadline, maximum, and fresh price;
 2. calculate with full-precision upward rounding;
-3. write the next legal state or locked amount;
+3. write the next legal state or locked amount and its matching aggregate-liability change;
 4. call FXRP through `SafeERC20`;
 5. verify incoming balance deltas where FXRP enters;
 6. emit the lifecycle event.
 
-A revert from any later check rolls back the earlier effect. No external call occurs before role,
-state, deadline, and quote protection are accepted.
+A revert from any later check rolls back the earlier effect. Financial entry and exit paths check
+current solvency against `activeFxrpLiabilities`, and successful incoming/outgoing transfers must
+match the exact expected token delta. No external call occurs before role, state, deadline, and
+quote protection are accepted.
 
 There is no arbitrary token recipient. Payout goes only to the stored freelancer; excess and
 missed-delivery refunds go only to the stored client.
@@ -586,8 +627,11 @@ missed-delivery refunds go only to the stored client.
 - Only the role-authorized handler can cause each transition.
 - No callable path transfers FXRP to an arbitrary address or privileged administrator.
 
-Phase 2 contains only the constant/import compile check. These unit, fuzz, and invariant tests are
-required with the Phase 3 implementation and are not claimed as run here.
+This table originated as the Phase 2 test requirement. It was completed in Phase 3: commit
+`7244d3e` supplied 56 deterministic unit tests, and commit `9a32091` added six 512-run fuzz
+properties plus their supported-range endpoint test and six 128-run-by-32-depth stateful
+invariants. The recorded full suite passed 69 tests. These are automated test results, not an
+independent security audit.
 
 ## Explicit limitations and non-goals
 
@@ -599,5 +643,5 @@ required with the Phase 3 implementation and are not claimed as run here.
   exists.
 - A future nonzero FTSOv2 read fee requires an architecture revision.
 - Unsolicited FXRP sent directly to the contract is stranded because no withdrawal path exists.
-- Production security requires the implemented Phase 3 tests, deployment checks, and later review;
-  this specification and compile probe are not an audit.
+- The completed Phase 3 tests, Phase 4A deployment checks, and preserved Coston2 receipts are not an
+  audit or evidence of production security.
