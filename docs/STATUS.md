@@ -705,3 +705,76 @@ Gate: `PASS`
 
 - Commit subject on PASS: `feat: present live ProofPay settlement`.
 - Next decision: `READY FOR WALLET ACTIONS`.
+
+## Phase 5B1 — wallet-connected action preparation
+
+Gate: `PASS`
+
+### Routes and policy
+
+- Added `/app` for milestone creation and invoice lookup. Extended `/invoice/[id]` with one
+  centralized role/state/deadline/quote policy. `/receipt/[id]` remains read-only.
+- Added injected-wallet integration through wagmi and viem. The connected account's actual chain
+  ID must be Coston2 `114`; client, freelancer, unrelated, disconnected, wrong-network, and terminal
+  states receive distinct controls or explanations.
+- No contract, deployment, RPC adapter, browser service, backend, database, indexer, auth,
+  analytics, or live-chain transaction was added or changed.
+
+### Action preparation
+
+- Creation commits canonical scope bytes, simulates `createInvoice`, and shows the predicted ID
+  before a signature request.
+- Funding calls `quoteFunding`, independently checks the two-stage upward-rounded 10% protection,
+  applies a 0.5%–5% accepted tolerance, checks allowance, and stages only an exact approval when
+  needed. Approval and funding remain separate intents.
+- Evidence normalizes public URLs and optional commit/note fields into sorted canonical UTF-8 JSON,
+  displays its `keccak256` commitment, and simulates `submitEvidence`.
+- Submitted invoices call `quoteRelease` before selecting an exact top-up or release. Cancellation
+  and missed-deadline refund follow the deployed contract's existing role and deadline rules.
+- Every prepared intent exposes the exact network, contract, account, invoice, token/amount,
+  deadline, maximum, result, and intent hash. Contract reverts and nested EIP-1193 wallet rejection
+  errors map to specific non-completion copy.
+
+### Browser-local journal
+
+- `proofpay.transaction-journal.v1` records only public action identity and transaction state:
+  prepared, awaiting wallet, submitted, confirmed, reverted, or abandoned.
+- Reload downgrades an interrupted unsigned wallet prompt to prepared and reconciles submitted
+  hashes through receipts. Duplicate active actions are blocked until authoritative state changes;
+  only unsigned prepared intents may be abandoned.
+- The journal is browser/device-local. It has no account sync, server persistence, indexing, or
+  generic historical receipt discovery.
+
+### Validation boundary
+
+- All action-browser tests use an injected deterministic EIP-1193 provider and fail if the real
+  Coston2 RPC is contacted. Signing, rejection, receipt, and reload behavior are provider-only test
+  evidence; no live Coston2 action was broadcast.
+- A real live-browser settlement through an injected wallet remains the next explicit decision and
+  cannot be claimed by this phase.
+
+### Final validation
+
+- `npm run lint` and `npm run typecheck`: passed with zero warnings or errors.
+- `npm run test:unit`: 29 passed, zero failed, including 11 focused wallet-policy, amount,
+  manifest, error, and journal tests while preserving all 18 Phase 5A tests.
+- `npm run build`: passed; `/app` is static and `/invoice/[id]` and `/receipt/[id]` remain dynamic.
+- `npm run test:e2e`: 10 passed, zero failed. Seven injected-provider action flows cover explicit
+  wallet roles, wrong-network correction, creation rejection, exact approval then funding,
+  evidence, cancellation, refund, top-up, release, journal reload, serious/critical Axe results,
+  visible keyboard focus, and 390-pixel overflow. The three Phase 5A fixture tests still pass.
+- `npm run reconcile:interface:coston2`: passed at pinned block `33803212` with the original four
+  lifecycle transactions, exact lock/payout/refund conservation, zero liabilities, zero contract
+  FXRP balance, and pinned party balances.
+- `npm run test:e2e:live`: two read-only live tests passed. The five tracked Phase 5A screenshots
+  were restored to their prior committed bytes after the validation run.
+- Production dependency audit: zero known vulnerabilities. Exact-value scan for both owner-only
+  test-wallet secrets and the focused high-confidence credential scan: zero hits.
+- The 34 protected contract, deployment, script, and live-evidence files match baseline aggregate
+  hash `1e8a79e8eac523b78d0e09d1294835939277c8050082a1db9b2ab0e1e711d5bf`.
+- `git diff --check`: passed.
+
+### Phase completion
+
+- Commit subject on PASS: `feat: add ProofPay wallet actions`.
+- Next decision: `READY FOR LIVE BROWSER SETTLEMENT`.

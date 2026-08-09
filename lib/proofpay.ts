@@ -24,6 +24,7 @@ const EVIDENCE_MANIFEST_PATH = resolve(process.cwd(), "artifacts", "live-evidenc
 const EXPECTED_CHAIN_ID = 114;
 const EXPECTED_RECEIPT_ID = 1n;
 const SYNTHETIC_TOP_UP_INVOICE_ID = 2n;
+const WALLET_ACTION_FIXTURE_IDS = new Set([3n, 4n, 5n, 6n, 7n]);
 const EXPECTED_RPC_URL = "https://coston2-api.flare.network/ext/C/rpc";
 const EXPECTED_CONTRACT_ADDRESS = getAddress("0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21");
 const EXPECTED_FXRP_ADDRESS = getAddress("0x0b6A3645c240605887a5532109323A3E12273dc7");
@@ -141,7 +142,13 @@ export interface InvoiceView {
   freelancer: Address | null;
   scopeHash: Hash | null;
   receiptLocatorAvailable: boolean;
-  sampleScenario?: "TOP_UP_REQUIRED";
+  sampleScenario?:
+    | "TOP_UP_REQUIRED"
+    | "ACTION_CREATED"
+    | "ACTION_FUNDED_OPEN"
+    | "ACTION_FUNDED_EXPIRED"
+    | "ACTION_SUBMITTED_TOP_UP"
+    | "ACTION_SUBMITTED_RELEASE";
   scopeLines?: readonly string[];
   summary: string;
   nextStep: string;
@@ -1386,8 +1393,89 @@ function syntheticTopUpInvoiceView(): InvoiceView {
   };
 }
 
+function syntheticWalletActionInvoiceView(invoiceId: bigint): InvoiceView {
+  const client = getAddress("0x2222222222222222222222222222222222222222");
+  const freelancer = getAddress("0x1111111111111111111111111111111111111111");
+  const futureDeadline = 2_000_000_000n;
+  const expiredDeadline = 1_700_000_000n;
+  const fixtures = {
+    3: {
+      status: "CREATED",
+      sampleScenario: "ACTION_CREATED",
+      deadline: futureDeadline,
+      locked: 0n,
+      title: "Wallet-action fixture — Awaiting funding",
+    },
+    4: {
+      status: "FUNDED",
+      sampleScenario: "ACTION_FUNDED_OPEN",
+      deadline: futureDeadline,
+      locked: 5_500_000n,
+      title: "Wallet-action fixture — Delivery window open",
+    },
+    5: {
+      status: "FUNDED",
+      sampleScenario: "ACTION_FUNDED_EXPIRED",
+      deadline: expiredDeadline,
+      locked: 5_500_000n,
+      title: "Wallet-action fixture — Delivery deadline passed",
+    },
+    6: {
+      status: "SUBMITTED",
+      sampleScenario: "ACTION_SUBMITTED_TOP_UP",
+      deadline: expiredDeadline,
+      locked: 4_000_000n,
+      title: "Wallet-action fixture — Settlement shortfall",
+    },
+    7: {
+      status: "SUBMITTED",
+      sampleScenario: "ACTION_SUBMITTED_RELEASE",
+      deadline: expiredDeadline,
+      locked: 5_500_000n,
+      title: "Wallet-action fixture — Ready for settlement",
+    },
+  } as const satisfies Record<number, {
+    status: InvoiceStatus;
+    sampleScenario: Exclude<NonNullable<InvoiceView["sampleScenario"]>, "TOP_UP_REQUIRED">;
+    deadline: bigint;
+    locked: bigint;
+    title: string;
+  }>;
+  const fixture = fixtures[Number(invoiceId) as keyof typeof fixtures];
+  if (!fixture) throw new ProofPayDataError("INVALID_INVOICE_ID", "Unknown wallet-action fixture invoice.");
+  const copy = statusCopy(fixture.status, undefined, false);
+  const reachedCount = fixture.status === "CREATED" ? 1 : fixture.status === "FUNDED" ? 2 : 3;
+  return {
+    kind: "invoice",
+    exists: true,
+    id: invoiceId.toString(),
+    network: networkView(0n, 0n),
+    contractAddress: EXPECTED_CONTRACT_ADDRESS,
+    status: fixture.status,
+    title: fixture.title,
+    usdTarget: money(5_000_000n, "USD"),
+    currentFxrpLocked: money(fixture.locked, "FXRP"),
+    activeLiabilities: money(fixture.locked, "FXRP"),
+    contractFxrpBalance: money(fixture.locked, "FXRP"),
+    deadline: timestamp(fixture.deadline),
+    client,
+    freelancer,
+    scopeHash: `0x${"3".repeat(64)}`,
+    receiptLocatorAvailable: false,
+    sampleScenario: fixture.sampleScenario,
+    summary: copy.summary,
+    nextStep: copy.nextStep,
+    lifecycle: (["AGREED", "FUNDED", "DELIVERED", "SETTLED"] as const).map((stage, index) => ({
+      stage,
+      reached: index < reachedCount,
+      confirmed: false,
+    })),
+  };
+}
+
 async function getFixtureInvoiceView(invoiceId: bigint): Promise<InvoiceView> {
   if (invoiceId === SYNTHETIC_TOP_UP_INVOICE_ID) return syntheticTopUpInvoiceView();
+  if (WALLET_ACTION_FIXTURE_IDS.has(invoiceId)) return syntheticWalletActionInvoiceView(invoiceId);
   const artifact = await readFixtureArtifact();
   const identity = await getDeploymentIdentity();
   const journal = await readFixtureLiveJournal(identity);

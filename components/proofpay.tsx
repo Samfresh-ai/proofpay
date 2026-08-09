@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { InvoiceActions } from "./invoice-actions";
+
 import type {
   InvoiceEvidenceView,
   InvoiceLifecycleView,
@@ -274,6 +276,10 @@ export function MilestoneDocument({ invoice }: { invoice: InvoiceView }) {
 
             {invoice.preview ? (
               <ReleasePreview preview={invoice.preview} sampleScenario={invoice.sampleScenario} />
+            ) : null}
+
+            {invoice.status !== "UNKNOWN" && invoice.sampleScenario !== "TOP_UP_REQUIRED" ? (
+              <InvoiceActions invoice={invoice} />
             ) : null}
 
             {invoice.scopeLines?.length ? (

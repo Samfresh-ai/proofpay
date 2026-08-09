@@ -6,7 +6,7 @@ const baseURL = `http://${host}:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: "**/interface.spec.ts",
+  testMatch: ["**/interface.spec.ts", "**/wallet-actions.spec.ts"],
   fullyParallel: false,
   workers: 1,
   retries: 0,

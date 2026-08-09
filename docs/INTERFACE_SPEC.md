@@ -209,3 +209,54 @@ behavior.
   protected-file checks, and `git diff --check` passed.
 - A temporary RPC failure rendered the explicit error and retry document without substituting
   fixtures. Final validation resumed only after live reconciliation succeeded.
+
+## Phase 5B1 wallet-action extension
+
+Phase 5B1 adds action preparation to the same document hierarchy; it does not replace the Phase 5A
+read boundary or alter `/receipt/[id]`. `/app` creates or locates a milestone. `/invoice/[id]`
+derives the next available action from the connected account, invoice state, deadline, chain, and
+latest simulated quote. Every state-changing control requires an injected EVM wallet connected to
+Coston2 chain `114`.
+
+| Invoice state | Connected role | Available preparation |
+| --- | --- | --- |
+| `CREATED`, before deadline | client | quote, allowance check, exact approval when required, funding simulation |
+| `CREATED` | freelancer | cancellation simulation |
+| `FUNDED`, at or before deadline | freelancer | deterministic evidence commitment and submission simulation |
+| `FUNDED`, after deadline | client | full-lock refund simulation |
+| `SUBMITTED` | client | fresh release quote, then exact top-up or release simulation |
+| terminal or unrelated | any | no state-changing control |
+
+The wallet panel distinguishes no wallet, wrong network, connected client, connected freelancer,
+and unrelated wallet. It uses the connected account's actual chain ID rather than the application's
+configured default. A signature button appears only after the relevant simulation passes. The
+review always shows action, network, contract, connected account, invoice ID, token/amount, quote
+deadline, accepted maximum, expected result, and deterministic intent hash.
+
+Funding independently recomputes the contract's upward-rounded USD conversion and 10% protection.
+The user-selected tolerance is bounded from 0.5% through 5%. When the FXRP allowance is below the
+accepted maximum, approval is a separate intent for that exact amount; unlimited approval is never
+prepared. Funding must be quoted and simulated again after approval.
+
+Evidence uses sorted canonical UTF-8 JSON. Public HTTP(S) delivery URLs are normalized, sorted,
+deduplicated, stripped of fragments, and rejected when they contain credentials or local/private
+hosts. Optional commit and completion note fields enter the same manifest. The displayed
+`keccak256` commitment proves the submitted bytes only, not delivery truth or quality.
+
+The browser-local transaction journal records prepared, awaiting-wallet, submitted, confirmed,
+reverted, or abandoned status. It stores action identity and public transaction metadata only. A
+stale awaiting-wallet entry returns to prepared after reload; submitted hashes reconcile through
+their receipts. Prepared, submitted, and confirmed entries block duplicate preparation until the
+authoritative invoice state changes. This journal is not an indexer, account, database, or
+cross-device history.
+
+All Phase 5B1 browser signing tests use a deterministic injected EIP-1193 provider. They do not
+contact the public Coston2 RPC and cannot broadcast a live transaction. Therefore Phase 5B1 proves
+the preparation, simulation, wallet-request, receipt, and journaling behavior under test, but not a
+real wallet's live Coston2 settlement.
+
+Phase 5B1 validation passed 29 unit tests, ten fixture browser tests, two live read-only browser
+tests, the production build, lint, typecheck, live settlement reconciliation, exact secret scans,
+dependency audit, protected-file comparison, and `git diff --check`. The action browser tests cover
+serious/critical Axe results, visible keyboard focus, and 390-pixel overflow. No real Coston2 wallet
+transaction was sent.

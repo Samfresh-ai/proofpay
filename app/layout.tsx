@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 
+import { ProofPayWalletProvider } from "@/components/wallet-provider";
+
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -7,7 +9,7 @@ export const metadata: Metadata = {
     default: "ProofPay · Coston2 settlement evidence",
     template: "%s · ProofPay",
   },
-  description: "Read-only invoice and settlement evidence from the ProofPay contract on Coston2.",
+  description: "Create, fund, deliver, and settle evidence-backed FXRP milestones on Coston2.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -17,7 +19,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <a className="skip-link" href="#main-content">
           Skip to main content
         </a>
-        {children}
+        <ProofPayWalletProvider>{children}</ProofPayWalletProvider>
       </body>
     </html>
   );

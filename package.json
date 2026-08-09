@@ -8,7 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint app components lib tests e2e scripts/reconcile-interface.ts *.config.ts --max-warnings=0",
-    "test:unit": "vitest run tests/proofpay.test.ts",
+    "test:unit": "vitest run tests",
     "test:e2e": "playwright test",
     "test:e2e:live": "playwright test --config=playwright.live.config.ts",
     "reconcile:interface:coston2": "tsx scripts/reconcile-interface.ts",
@@ -20,10 +20,12 @@
     "verify:live:coston2": "tsx scripts/verify-live-invoice.ts"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.101.4",
     "next": "16.3.0",
     "react": "19.2.8",
     "react-dom": "19.2.8",
-    "viem": "2.55.11"
+    "viem": "2.55.11",
+    "wagmi": "^3.7.6"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.12.1",
