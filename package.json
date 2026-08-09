@@ -10,6 +10,7 @@
     "lint": "eslint app components lib tests e2e scripts/reconcile-interface.ts scripts/scan-browser-secrets.ts scripts/verify-browser-settlement.ts *.config.ts --max-warnings=0",
     "test:unit": "vitest run tests",
     "test:e2e": "playwright test",
+    "test:e2e:production": "playwright test --config=playwright.production.config.ts",
     "test:e2e:live": "playwright test --config=playwright.live.config.ts",
     "test:e2e:browser-live": "playwright test --config=playwright.browser-live.config.ts",
     "reconcile:interface:coston2": "tsx scripts/reconcile-interface.ts",

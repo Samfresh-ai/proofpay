@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { encodeFunctionData, encodeFunctionResult } from "viem";
+import { mkdir } from "node:fs/promises";
+import { resolve } from "node:path";
 
 import {
   fxrpAbi,
@@ -14,6 +16,16 @@ const FREELANCER = "0x1111111111111111111111111111111111111111";
 const OTHER = "0x3333333333333333333333333333333333333333";
 const TX_HASH = `0x${"a".repeat(64)}`;
 const BLOCK_HASH = `0x${"b".repeat(64)}`;
+const refinementArtifacts = resolve(process.cwd(), "artifacts", "interface-refinement");
+
+async function captureRefinement(page: Page, name: string) {
+  await mkdir(refinementArtifacts, { recursive: true });
+  await page.screenshot({
+    path: resolve(refinementArtifacts, name),
+    fullPage: true,
+    animations: "disabled",
+  });
+}
 
 const calls = {
   createInvoice: encodeFunctionData({ abi: proofPayAbi, functionName: "createInvoice", args: [CLIENT, 1n, 1n, `0x${"1".repeat(64)}`] }).slice(0, 10),
@@ -184,7 +196,9 @@ async function open(page: Page, route: string) {
 }
 
 async function connect(page: Page) {
-  await page.getByRole("button", { name: "Connect wallet" }).click();
+  await expect(page.locator('[data-testid^="wallet-state-"]:not([data-testid="wallet-state-loading"])')).toBeVisible();
+  const button = page.getByRole("button", { name: "Connect wallet" });
+  if (await button.isVisible()) await button.click();
   await expect(page.getByTestId(/wallet-state-(client|freelancer|unrelated|connected)/u)).toBeVisible();
 }
 
@@ -226,10 +240,19 @@ test("invoice creation hashes scope, simulates, journals, and handles wallet rej
   await page.getByLabel("Milestone title").fill("Acceptance test milestone");
   await page.getByLabel("Client wallet").fill(CLIENT);
   await page.getByLabel("USD target").fill("5.00");
-  await page.getByLabel("Delivery deadline").fill("2033-05-18T03:33");
+  const beforePreset = Math.floor(Date.now() / 1_000);
+  await page.getByRole("button", { name: "Set 24 hours from now" }).click();
+  const deadlineSummary = page.getByTestId("deadline-summary");
+  await expect(deadlineSummary).toContainText("Your local time");
+  await expect(deadlineSummary).toContainText("UTC equivalent");
+  const contractTimestamp = Number((await deadlineSummary.locator("div").last().locator("dd").innerText()).trim());
+  expect(contractTimestamp - beforePreset).toBeGreaterThanOrEqual(86_400);
+  expect(contractTimestamp - beforePreset).toBeLessThanOrEqual(86_402);
   await page.getByLabel("Scope · one deliverable per line").fill("Implement acceptance test\nPublish receipt");
   await page.getByRole("button", { name: "Simulate invoice creation" }).click();
   const intent = await expectPrepared(page, /Create this \$5 milestone/u);
+  await expect(intent.getByTestId("intent-contract-deadline")).toContainText("UTC");
+  await expect(intent.getByTestId("intent-contract-deadline")).toContainText(contractTimestamp.toString());
   await expect(page.getByText(/keccak256:/u)).toBeVisible();
   await intent.getByRole("button", { name: /Create this \$5 milestone/u }).click();
   await expect(intent).toContainText("Wallet request rejected. Nothing was submitted.");
@@ -247,8 +270,16 @@ test("funding stages exact approval separately, then completes a simulated provi
   await approval.getByRole("button", { name: /Approve up to 5\.61 FXRP/u }).click();
   await expect(page.getByTestId("transaction-state")).toContainText("Transaction confirmed");
   await page.evaluate(() => (window as never as { __proofPayWalletTest: { setAllowance(value: string): void } }).__proofPayWalletTest.setAllowance("999999999"));
-  await page.getByRole("button", { name: "Preview and simulate funding" }).click();
-  const funding = await expectPrepared(page, /Fund this \$5 milestone with up to 5\.61 FXRP/u);
+  await page.getByRole("button", { name: "Continue with saved funding intent" }).click();
+  const funding = await expectPrepared(page, /Fund this \$5 milestone/u);
+  await expect(funding).toContainText("5.61 FXRP");
+  await captureRefinement(page, "06-funding-intent.png");
+  const quoteCalls = await page.evaluate((selector) => (
+    (window as never as { __proofPayWalletTest: { state: { requests: Array<{ method: string; params?: Array<{ data?: string }> }> } } })
+      .__proofPayWalletTest.state.requests
+      .filter((request) => request.method === "eth_call" && request.params?.[0]?.data?.startsWith(selector)).length
+  ), calls.quoteFunding);
+  expect(quoteCalls).toBe(1);
   await funding.getByRole("button", { name: /Fund this \$5 milestone/u }).click();
   await expect(page.getByTestId("transaction-state")).toContainText("Transaction confirmed");
   expect(await page.evaluate(() => (window as never as { __proofPayWalletTest: { state: { transactions: unknown[] } } }).__proofPayWalletTest.state.transactions)).toHaveLength(2);
@@ -256,6 +287,22 @@ test("funding stages exact approval separately, then completes a simulated provi
   await expect(page.getByTestId("transaction-journal")).toContainText("approve");
   await expect(page.getByTestId("transaction-journal")).toContainText("fund");
   await expect(page.getByTestId("transaction-journal")).toContainText("confirmed");
+});
+
+test("reload preserves the frozen funding preview without fetching a second quote", async ({ page }) => {
+  await installInjectedWallet(page, { account: CLIENT, allowance: "0" });
+  await open(page, "/invoice/3");
+  await connect(page);
+  await page.getByRole("button", { name: "Preview and simulate funding" }).click();
+  const previewBefore = await page.getByTestId("funding-preview").textContent();
+  expect(await page.evaluate(() => localStorage.getItem("proofpay.funding-intents.v1"))).toContain("5610000");
+
+  await page.reload({ waitUntil: "networkidle" });
+  await connect(page);
+  await expect(page.getByTestId("funding-preview")).toContainText("5.61 FXRP");
+  await expect(page.getByRole("button", { name: "Continue with saved funding intent" })).toBeVisible();
+  expect(await page.getByTestId("funding-preview").textContent()).toContain("5.61 FXRP");
+  expect(previewBefore).toContain("5.61 FXRP");
 });
 
 test("freelancer evidence and cancellation prepare only their exact contract actions", async ({ page }) => {
@@ -286,14 +333,17 @@ test("client refund, top-up, and release use the current simulated quote and exa
   await page.goto("/invoice/6", { waitUntil: "networkidle" });
   await connect(page);
   await page.getByRole("button", { name: "Refresh and simulate settlement" }).click();
-  await expect(page.getByTestId("settlement-preview")).toContainText("short by 1 FXRP");
+  await expect(page.getByTestId("settlement-preview")).toContainText("exact shortfall is 1 FXRP");
   await expectPrepared(page, /Top up 1 FXRP before payment can be released/u);
 
   await page.goto("/invoice/7", { waitUntil: "networkidle" });
   await connect(page);
   await page.getByRole("button", { name: "Refresh and simulate settlement" }).click();
   await expect(page.getByTestId("settlement-preview")).toContainText("No payment has been released");
-  await expectPrepared(page, /Release 5 FXRP and return 0\.5 FXRP/u);
+  const release = await expectPrepared(page, /Release payment/u);
+  await expect(release).toContainText("5 FXRP to the freelancer");
+  await expect(release).toContainText("0.5 FXRP");
+  await captureRefinement(page, "07-release-intent.png");
 });
 
 test("wallet-action surfaces have no serious accessibility violations or mobile overflow", async ({ page }) => {

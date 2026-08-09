@@ -265,6 +265,10 @@ h3 {
   font-size: 0.82rem;
 }
 
+.mobile-lifecycle-summary {
+  display: none;
+}
+
 .terms-list,
 .proof-list,
 .price-list {
@@ -505,6 +509,11 @@ h3 {
   font-size: 0.78rem;
 }
 
+.rail-stage .rail-detail {
+  color: var(--ink);
+  font-weight: 680;
+}
+
 .rail-stage details {
   margin-top: 0.85rem;
 }
@@ -579,6 +588,22 @@ summary {
   line-height: 1.32;
 }
 
+.protection-summary {
+  margin-block: clamp(2rem, 5vw, 4rem);
+}
+
+.protection-copy {
+  max-width: 62ch;
+  margin-bottom: 1.25rem;
+  font-family: var(--serif);
+  font-size: clamp(1.15rem, 2.2vw, 1.55rem);
+  line-height: 1.35;
+}
+
+.protection-copy p {
+  margin: 0.35rem 0;
+}
+
 .proof-section + .proof-section {
   margin-top: clamp(2rem, 5vw, 4rem);
 }
@@ -638,6 +663,54 @@ summary {
   font-weight: 680;
 }
 
+.deadline-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.preset-button {
+  justify-self: start;
+  min-height: 2.25rem;
+  padding-block: 0.4rem;
+}
+
+.deadline-summary {
+  margin: 1rem 0 0;
+  padding: 0.85rem 1rem;
+  border-left: 3px solid var(--flare);
+  background: var(--paper-deep);
+}
+
+.deadline-summary > div {
+  display: grid;
+  grid-template-columns: minmax(8rem, 0.34fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.deadline-summary dt,
+.deadline-summary dd {
+  margin: 0;
+}
+
+.deadline-summary dt {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 680;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.deadline-summary dd,
+.deadline-intent-value {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+}
+
+.deadline-intent-value,
+.deadline-intent-value span {
+  display: block;
+}
+
 .form-span {
   grid-column: 1 / -1;
 }
@@ -665,6 +738,7 @@ summary {
   margin-top: 1.25rem;
   padding-block: 1rem;
   border-block: 1px solid var(--rule);
+  min-height: 6.5rem;
 }
 
 .wallet-connection p,
@@ -679,6 +753,16 @@ summary {
   align-items: end;
   gap: 0.75rem;
   margin-top: 1rem;
+}
+
+.wallet-actions {
+  padding: 1.25rem;
+  border-block: 1px solid var(--ink);
+  background: var(--paper-deep);
+}
+
+.wallet-actions > .section-rule {
+  margin-top: 0;
 }
 
 .evidence-form {
@@ -787,6 +871,67 @@ summary {
 .action-error {
   border-color: var(--flare);
   color: var(--flare-dark);
+}
+
+.technical-identifier {
+  min-width: 0;
+}
+
+.identifier-short,
+.identifier-reveal code {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.identifier-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+  font-size: 0.76rem;
+}
+
+.identifier-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--flare-dark);
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--flare) 55%, transparent);
+  text-underline-offset: 0.18em;
+}
+
+.identifier-reveal {
+  margin-top: 0.35rem;
+  border: 0;
+}
+
+.identifier-reveal:last-child {
+  border-bottom: 0;
+}
+
+.identifier-reveal summary {
+  display: inline-block;
+  padding: 0;
+  color: var(--flare-dark);
+  font-weight: 500;
+}
+
+.identifier-reveal code {
+  display: block;
+  margin-top: 0.45rem;
+}
+
+.contract-event,
+.evidence-identifier {
+  margin-top: 0.4rem;
+}
+
+.contract-event {
+  color: var(--muted);
+  font-size: 0.78rem;
 }
 
 .journal-list {
@@ -916,6 +1061,30 @@ summary {
     margin-top: 1rem;
   }
 
+  .mobile-lifecycle-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: -0.5rem 0 1.5rem;
+    padding: 0.7rem 0;
+    border-block: 1px solid var(--rule);
+    list-style: none;
+    color: var(--muted);
+    font-size: 0.72rem;
+    font-weight: 680;
+    letter-spacing: 0.04em;
+  }
+
+  .mobile-lifecycle-summary li:not(:last-child)::after {
+    margin-left: 0.35rem;
+    color: var(--rule-strong);
+    content: "→";
+  }
+
+  .mobile-lifecycle-summary .stage-reached {
+    color: var(--flare-dark);
+  }
+
   .document-masthead,
   .document-footer,
   .receipt-heading,
@@ -941,7 +1110,8 @@ summary {
   .money-line,
   .intent-list > div,
   .form-grid,
-  .inline-form {
+  .inline-form,
+  .deadline-summary > div {
     grid-template-columns: minmax(0, 1fr);
     gap: 0.4rem;
   }
@@ -953,6 +1123,10 @@ summary {
   .transaction-button,
   .quiet-button,
   .tolerance-control {
+    width: 100%;
+  }
+
+  .preset-button {
     width: 100%;
   }
 

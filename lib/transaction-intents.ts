@@ -44,9 +44,13 @@ export interface TransactionIntent {
   tokenAddress: Address | null;
   amountAtomic: string | null;
   amountDisplay: string;
+  recipientDisplay: string;
+  contractDeadline: string | null;
   quoteDeadline: string | null;
   maximumAtomic: string | null;
   maximumDisplay: string;
+  changeBeforeConfirmation: string;
+  completionProof: string;
   expectedResult: string;
   intentHash: Hash;
 }
@@ -140,8 +144,22 @@ export function formatQuoteTimestamp(value: bigint): string {
 }
 
 export function buildTransactionIntent(
-  input: Omit<TransactionIntent, "chainId" | "contract" | "intentHash" | "network"> & {
+  input: Omit<
+    TransactionIntent,
+    | "chainId"
+    | "contract"
+    | "intentHash"
+    | "network"
+    | "recipientDisplay"
+    | "contractDeadline"
+    | "changeBeforeConfirmation"
+    | "completionProof"
+  > & {
     contract?: Address;
+    recipientDisplay?: string;
+    contractDeadline?: string | null;
+    changeBeforeConfirmation?: string;
+    completionProof?: string;
   },
 ): TransactionIntent {
   const payload = {
@@ -151,13 +169,19 @@ export function buildTransactionIntent(
     amountAtomic: input.amountAtomic,
     amountDisplay: input.amountDisplay,
     chainId: PROOFPAY_CHAIN_ID,
+    changeBeforeConfirmation: input.changeBeforeConfirmation
+      ?? "A changed account, chain, invoice state, or expired quote invalidates this prepared intent.",
+    completionProof: input.completionProof
+      ?? "A successful Coston2 receipt and the resulting contract state.",
     contract: input.contract ?? PROOFPAY_CONTRACT_ADDRESS,
+    contractDeadline: input.contractDeadline ?? null,
     expectedResult: input.expectedResult,
     invoiceId: input.invoiceId,
     maximumAtomic: input.maximumAtomic,
     maximumDisplay: input.maximumDisplay,
     network: PROOFPAY_CHAIN_NAME,
     quoteDeadline: input.quoteDeadline,
+    recipientDisplay: input.recipientDisplay ?? "No token recipient",
     token: input.token,
     tokenAddress: input.tokenAddress,
   };
@@ -185,6 +209,9 @@ export function buildApprovalIntent(input: {
     maximumAtomic: input.maximumFxrp.toString(),
     maximumDisplay: formatFxrpAmount(input.maximumFxrp),
     expectedResult: "The FXRP contract may spend only this milestone’s accepted maximum. No escrow funding occurs in this approval.",
+    recipientDisplay: "ProofPay escrow contract · allowance only",
+    changeBeforeConfirmation: "The accepted maximum is frozen. No live quote refresh occurs while this funding intent remains valid.",
+    completionProof: "A successful FXRP approval receipt and an onchain allowance at or above this exact maximum.",
   });
 }
 
@@ -198,7 +225,7 @@ export function buildFundingIntent(input: {
 }): TransactionIntent {
   return buildTransactionIntent({
     action: "fund",
-    actionLabel: `Fund this ${formatUsdAmount(input.usdTargetAtomic)} milestone with up to ${formatFxrpAmount(input.maximumFxrp)}`,
+    actionLabel: `Fund this ${formatUsdAmount(input.usdTargetAtomic)} milestone`,
     account: input.account,
     invoiceId: input.invoiceId.toString(),
     token: "FXRP",
@@ -209,6 +236,9 @@ export function buildFundingIntent(input: {
     maximumAtomic: input.maximumFxrp.toString(),
     maximumDisplay: formatFxrpAmount(input.maximumFxrp),
     expectedResult: `Lock the current required amount, up to ${formatFxrpAmount(input.maximumFxrp)}, and move the invoice to FUNDED.`,
+    recipientDisplay: "ProofPay escrow contract",
+    changeBeforeConfirmation: "The contract may pull less than the maximum as the live price moves. It cannot pull more.",
+    completionProof: "An InvoiceFunded event, FUNDED contract state, and the confirmed FXRP lock.",
   });
 }
 
@@ -232,6 +262,9 @@ export function buildTopUpIntent(input: {
     maximumAtomic: input.maximumFxrp.toString(),
     maximumDisplay: formatFxrpAmount(input.maximumFxrp),
     expectedResult: "Increase the stored FXRP lock by only the current shortfall. Nothing is released.",
+    recipientDisplay: "ProofPay escrow contract",
+    changeBeforeConfirmation: "The contract may pull less than the accepted maximum if the shortfall falls. It cannot pull more.",
+    completionProof: "A successful top-up receipt and the increased onchain FXRP lock.",
   });
 }
 
@@ -245,7 +278,7 @@ export function buildReleaseIntent(input: {
 }): TransactionIntent {
   return buildTransactionIntent({
     action: "release",
-    actionLabel: `Release ${formatFxrpAmount(input.payoutFxrp)} and return ${formatFxrpAmount(input.refundFxrp)}`,
+    actionLabel: "Release payment",
     account: input.account,
     invoiceId: input.invoiceId.toString(),
     token: "FXRP",
@@ -256,6 +289,9 @@ export function buildReleaseIntent(input: {
     maximumAtomic: input.maximumFxrp.toString(),
     maximumDisplay: formatFxrpAmount(input.maximumFxrp),
     expectedResult: `Pay ${formatFxrpAmount(input.payoutFxrp)} to the freelancer, return ${formatFxrpAmount(input.refundFxrp)} to the client, and move the invoice to RELEASED.`,
+    recipientDisplay: "Freelancer payout and client refund",
+    changeBeforeConfirmation: "The live price may change the final split within the accepted payout maximum; otherwise the contract rejects the transaction.",
+    completionProof: "An InvoiceReleased event, RELEASED contract state, party balances, and zero active liabilities.",
   });
 }
 

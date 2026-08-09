@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { InvoiceActions } from "./invoice-actions";
+import { TechnicalIdentifier } from "./technical-identifier";
 
 import type {
   InvoiceEvidenceView,
@@ -16,12 +17,24 @@ const STATUS_HEADINGS: Record<Exclude<InvoiceView["status"], "UNKNOWN">, string>
   CREATED: "Agreement recorded",
   FUNDED: "Milestone funded",
   SUBMITTED: "Delivery evidence submitted",
-  RELEASED: "Payment released",
+  RELEASED: "Payment settled",
   CANCELLED: "Invoice cancelled",
   REFUNDED: "FXRP returned to the client",
 };
 
 const EXPLORER_ORIGIN = "https://coston2-explorer.flare.network";
+const LIFECYCLE_LABELS = {
+  AGREED: "Milestone agreed",
+  FUNDED: "FXRP funded",
+  DELIVERED: "Delivery evidence attached",
+  SETTLED: "Payment settled",
+} as const;
+const LIFECYCLE_SHORT_LABELS = {
+  AGREED: "Agreed",
+  FUNDED: "Funded",
+  DELIVERED: "Delivered",
+  SETTLED: "Settled",
+} as const;
 
 function contractExplorerUrl(address: string): string {
   return `${EXPLORER_ORIGIN}/address/${address}`;
@@ -44,18 +57,18 @@ function DocumentMasthead({
   chainId,
   status,
   contextLabel,
+  documentLabel = "PROOFPAY / MILESTONE RECORD",
 }: {
   networkName: string;
   chainId: string;
   status: InvoiceView["status"] | "SETTLED" | "ERROR" | "WAITING";
   contextLabel?: string;
+  documentLabel?: "PROOFPAY / MILESTONE RECORD" | "PROOFPAY / SETTLEMENT RECEIPT";
 }) {
   return (
     <header className="document-masthead">
       <div>
-        <div className="wordmark">
-          ProofPay <span aria-hidden="true">/</span> evidence record
-        </div>
+        <div className="wordmark">{documentLabel}</div>
         <p className="network-label">
           {contextLabel ?? `${networkName} · chain ${chainId}`}
         </p>
@@ -77,11 +90,13 @@ export function StatusStamp({
         ? "Read failed"
         : status === "WAITING"
           ? "Reading chain"
-          : status;
+          : status === "RELEASED"
+            ? "SETTLED"
+            : status;
 
   return (
     <span
-      aria-label={status in STATUS_HEADINGS ? `Invoice status: ${status}` : `Evidence status: ${label}`}
+      aria-label={status in STATUS_HEADINGS ? `Invoice status: ${label}` : `Evidence status: ${label}`}
       className="status-stamp"
       data-testid="status-stamp"
     >
@@ -94,7 +109,7 @@ export function AddressLabel({ label, address }: { label: string; address: strin
   return (
     <div className="term-row">
       <dt className="term-label">{label}</dt>
-      <dd className="address">{address}</dd>
+      <dd><TechnicalIdentifier explorerHref={contractExplorerUrl(address)} label={label} value={address} /></dd>
     </div>
   );
 }
@@ -103,19 +118,18 @@ export function TransactionEvidence({ transaction }: { transaction: ReceiptLifec
   return (
     <div className="proof-row">
       <dt>
-        <span className="evidence-label">{transaction.stage}</span>
+        <span className="evidence-label">{LIFECYCLE_LABELS[transaction.stage]}</span>
         <div className="confirmed-mark">Confirmed</div>
       </dt>
       <dd>
-        <div>{transaction.eventName}</div>
-        <div className="transaction">
-          <ExplorerLink
-            href={transaction.explorerUrl}
-            label={`Open the ${transaction.stage.toLowerCase()} transaction on the Coston2 explorer`}
-          >
-            {transaction.transactionHash}
-          </ExplorerLink>
-        </div>
+        <div>{transaction.detail}</div>
+        <div className="contract-event">Contract event · {transaction.eventName}</div>
+        <TechnicalIdentifier
+          explorerHref={transaction.explorerUrl}
+          explorerLabel={`Open the ${transaction.stage.toLowerCase()} transaction on the Coston2 explorer`}
+          label={`${LIFECYCLE_LABELS[transaction.stage]} transaction`}
+          value={transaction.transactionHash}
+        />
         <div className="timestamp">
           Block {transaction.blockNumber} ·{" "}
           <time dateTime={transaction.blockTimestamp.iso}>{displayTimestamp(transaction.blockTimestamp.iso)}</time>
@@ -125,29 +139,63 @@ export function TransactionEvidence({ transaction }: { transaction: ReceiptLifec
   );
 }
 
+function hasLifecycleEvidence(stage: InvoiceLifecycleView): stage is ReceiptLifecycleView {
+  return "eventName" in stage && "transactionHash" in stage;
+}
+
+function MobileLifecycleSummary({ stages }: { stages: readonly InvoiceLifecycleView[] }) {
+  return (
+    <ol aria-label="Milestone lifecycle" className="mobile-lifecycle-summary">
+      {stages.map((stage) => (
+        <li className={stage.reached ? "stage-reached" : ""} key={stage.stage}>
+          {LIFECYCLE_SHORT_LABELS[stage.stage]}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export function SettlementRail({ stages }: { stages: readonly InvoiceLifecycleView[] }) {
   const isIllustrative = stages.some((stage) => stage.reached && !stage.confirmed);
 
   return (
     <aside aria-labelledby="settlement-rail-title" className="settlement-rail" data-testid="settlement-rail">
-      <h2 id="settlement-rail-title">Settlement path</h2>
+      <h2 id="settlement-rail-title">Settlement evidence</h2>
       <p>
         {isIllustrative
           ? "Illustrative stages for this fixture-only scenario. Nothing here is confirmed onchain."
-          : "Reached stages reflect the current invoice status read from the ProofPay contract."}
+          : stages.every((stage) => !stage.reached || hasLifecycleEvidence(stage))
+            ? "Each reached stage is tied to its confirmed contract event."
+            : "Reached stages reflect the current ProofPay escrow state."}
       </p>
       <ol className="rail-list">
         {stages.map((stage) => (
           <li className={`rail-stage${stage.reached ? " stage-reached" : ""}`} key={stage.stage}>
             <span aria-hidden="true" className="rail-marker" />
-            <div className="stage-label">{stage.stage}</div>
-            <p>
-              {stage.confirmed
-                ? "Confirmed by the current contract state."
-                : stage.reached
-                  ? "Illustrative only · not confirmed onchain."
-                  : "Not reached."}
-            </p>
+            <div className="stage-label">{LIFECYCLE_LABELS[stage.stage]}</div>
+            {hasLifecycleEvidence(stage) ? (
+              <>
+                <p className="rail-detail">{stage.detail}</p>
+                <p>{stage.eventName} · block {stage.blockNumber}</p>
+                <details>
+                  <summary>Transaction evidence</summary>
+                  <TechnicalIdentifier
+                    explorerHref={stage.explorerUrl}
+                    explorerLabel={`Open the ${stage.stage.toLowerCase()} transaction on the Coston2 explorer`}
+                    label={`${LIFECYCLE_LABELS[stage.stage]} transaction`}
+                    value={stage.transactionHash}
+                  />
+                </details>
+              </>
+            ) : (
+              <p>
+                {stage.confirmed
+                  ? "Confirmed by the current contract state."
+                  : stage.reached
+                    ? "Illustrative only · not confirmed onchain."
+                    : "Not reached."}
+              </p>
+            )}
           </li>
         ))}
       </ol>
@@ -162,7 +210,10 @@ export function EvidenceAttachment({ evidence }: { evidence: InvoiceEvidenceView
         Evidence attachment
       </h2>
       {evidence.completionNote ? <p>{evidence.completionNote}</p> : null}
-      <p className="hash">Evidence commitment: {evidence.hash}</p>
+      <div className="evidence-identifier">
+        <span className="evidence-label">Evidence commitment</span>
+        <TechnicalIdentifier label="Evidence commitment" value={evidence.hash} />
+      </div>
       {evidence.uri ? (
         <p>
           <ExplorerLink href={evidence.uri} label="Open the submitted evidence reference">
@@ -178,14 +229,14 @@ function ContractFooter({ invoice }: { invoice: InvoiceView }) {
   return (
     <footer className="document-footer">
       <span>
-        Contract
+        ProofPayEscrow contract
         <br />
-        <ExplorerLink
-          href={contractExplorerUrl(invoice.contractAddress)}
-          label="Open the ProofPay contract on the Coston2 explorer"
-        >
-          <span className="address">{invoice.contractAddress}</span>
-        </ExplorerLink>
+        <TechnicalIdentifier
+          explorerHref={contractExplorerUrl(invoice.contractAddress)}
+          explorerLabel="Open the ProofPay contract on the Coston2 explorer"
+          label="ProofPayEscrow contract"
+          value={invoice.contractAddress}
+        />
       </span>
       <span>
         Read-only evidence
@@ -203,7 +254,7 @@ function ContractFooter({ invoice }: { invoice: InvoiceView }) {
   );
 }
 
-export function MilestoneDocument({ invoice }: { invoice: InvoiceView }) {
+export function MilestoneDocument({ invoice, receipt }: { invoice: InvoiceView; receipt?: ReceiptView }) {
   const requiresTopUp = invoice.preview ? BigInt(invoice.preview.topUp.atomic) > 0n : false;
   const isSample = invoice.sampleScenario !== undefined;
 
@@ -233,6 +284,8 @@ export function MilestoneDocument({ invoice }: { invoice: InvoiceView }) {
               </div>
             </header>
 
+            <MobileLifecycleSummary stages={invoice.lifecycle} />
+
             <section aria-labelledby="invoice-terms-title">
               <h2 className="visually-hidden" id="invoice-terms-title">
                 {isSample ? "Illustrative invoice terms" : "Invoice terms and current contract state"}
@@ -243,7 +296,7 @@ export function MilestoneDocument({ invoice }: { invoice: InvoiceView }) {
                   <dd className="display-value">{invoice.usdTarget?.display}</dd>
                 </div>
                 <div className="term-row" data-testid="invoice-current-lock">
-                  <dt className="term-label">{isSample ? "Illustrative stored lock" : "Stored lock · current read"}</dt>
+                  <dt className="term-label">{isSample ? "Illustrative stored lock" : "FXRP locked at funding"}</dt>
                   <dd className="display-value">{invoice.currentFxrpLocked?.display}</dd>
                 </div>
                 {invoice.client ? <AddressLabel address={invoice.client} label="Client" /> : null}
@@ -251,7 +304,7 @@ export function MilestoneDocument({ invoice }: { invoice: InvoiceView }) {
                 {invoice.scopeHash ? (
                   <div className="term-row">
                     <dt className="term-label">Scope commitment</dt>
-                    <dd className="hash">{invoice.scopeHash}</dd>
+                    <dd><TechnicalIdentifier label="Scope commitment" value={invoice.scopeHash} /></dd>
                   </div>
                 ) : null}
               </dl>
@@ -269,10 +322,12 @@ export function MilestoneDocument({ invoice }: { invoice: InvoiceView }) {
               <p className="next-step">{invoice.nextStep}</p>
               {invoice.status === "RELEASED" && invoice.receiptLocatorAvailable ? (
                 <p>
-                  <Link href={`/receipt/${invoice.id}`}>Read the confirmed settlement receipt</Link>
+                  <Link href={`/receipt/${invoice.id}`}>View settlement receipt</Link>
                 </p>
               ) : null}
             </section>
+
+            {receipt ? <SettlementProtection receipt={receipt} /> : null}
 
             {invoice.preview ? (
               <ReleasePreview preview={invoice.preview} sampleScenario={invoice.sampleScenario} />
@@ -322,6 +377,10 @@ export function MilestoneDocument({ invoice }: { invoice: InvoiceView }) {
                       <dt className="term-label">Contract FXRP balance</dt>
                       <dd className="display-value">{invoice.contractFxrpBalance.display}</dd>
                     </div>
+                    <div className="term-row" data-testid="invoice-contract-state">
+                      <dt className="term-label">Contract state</dt>
+                      <dd className="display-value">{invoice.status}</dd>
+                    </div>
                   </dl>
                 </section>
 
@@ -364,6 +423,39 @@ export function PriceObservation({ label, observation }: { label: string; observ
   );
 }
 
+function priceMovement(funding: PriceView, release: PriceView): string {
+  const fundingValue = Number(funding.raw) / (10 ** funding.decimals);
+  const releaseValue = Number(release.raw) / (10 ** release.decimals);
+  const movement = ((releaseValue - fundingValue) / fundingValue) * 100;
+  if (Math.abs(movement) < 0.005) return "0.00%";
+  return `${movement > 0 ? "+" : "−"}${Math.abs(movement).toFixed(2)}%`;
+}
+
+function SettlementProtection({ receipt }: { receipt: ReceiptView }) {
+  const target = receipt.invoice.usdTarget?.display ?? "the milestone target";
+  return (
+    <section aria-labelledby="price-protection-title" className="protection-summary">
+      <div className="section-rule">
+        <p className="utility-label">Confirmed settlement economics</p>
+        <h2 id="price-protection-title">How the FXRP protection resolved</h2>
+      </div>
+      <div className="protection-copy">
+        <p>The client funded the milestone plus a 10% FXRP protection buffer.</p>
+        <p>At release, {receipt.confirmed.payout.display} covered the {target} target.</p>
+        <p>The unused {receipt.confirmed.refund.display} returned to the client.</p>
+      </div>
+      <dl className="price-list">
+        <PriceObservation label="Funding price" observation={receipt.confirmed.fundingPrice} />
+        <PriceObservation label="Release price" observation={receipt.confirmed.releasePrice} />
+        <div className="price-row" data-testid="price-movement">
+          <dt><span className="evidence-label">Price movement</span></dt>
+          <dd className="display-value">{priceMovement(receipt.confirmed.fundingPrice, receipt.confirmed.releasePrice)}</dd>
+        </div>
+      </dl>
+    </section>
+  );
+}
+
 function ReleasePreview({
   preview,
   sampleScenario,
@@ -386,7 +478,11 @@ function ReleasePreview({
         </div>
         <span className="unconfirmed-mark">Not confirmed</span>
       </div>
-      <p className="preview-warning">No payment has been released. This quote can change with the XRP / USD feed.</p>
+      <p className="preview-warning">
+        {isSample
+          ? "The escrow no longer covers the milestone target. No payment has been released."
+          : "No payment has been released. This quote can change with the XRP / USD feed."}
+      </p>
       <dl className="terms-list">
         <MoneyLine label="Previewed payout" testId="preview-payout" value={preview.payout.display} />
         <MoneyLine label="Previewed client refund" testId="preview-refund" value={preview.refund.display} />
@@ -421,7 +517,6 @@ export function SettlementReceipt({ receipt }: { receipt: ReceiptView }) {
     ? { ...invoice.evidence, uri: receipt.evidenceUri }
     : undefined;
   const target = invoice.usdTarget?.display ?? "Target unavailable";
-  const explanation = `The client locked ${receipt.confirmed.locked.display}. At release, ${receipt.confirmed.payout.display} covered the ${target} target. The remaining ${receipt.confirmed.refund.display} returned to the client.`;
 
   return (
     <main className="page-shell" id="main-content">
@@ -429,6 +524,7 @@ export function SettlementReceipt({ receipt }: { receipt: ReceiptView }) {
         <div className="paper-body">
           <DocumentMasthead
             chainId={invoice.network.chainId.toString()}
+            documentLabel="PROOFPAY / SETTLEMENT RECEIPT"
             networkName={invoice.network.name}
             status="SETTLED"
           />
@@ -446,24 +542,13 @@ export function SettlementReceipt({ receipt }: { receipt: ReceiptView }) {
             </h2>
             <dl className="money-ledger">
               <MoneyLine label="Milestone target" testId="money-target" value={target} />
-              <MoneyLine label="Confirmed historical lock" testId="money-locked" value={receipt.confirmed.locked.display} />
+              <MoneyLine label="FXRP locked at funding" testId="money-locked" value={receipt.confirmed.locked.display} />
               <MoneyLine label="Freelancer payout" testId="money-payout" value={receipt.confirmed.payout.display} />
               <MoneyLine label="Client refund" testId="money-refund" value={receipt.confirmed.refund.display} />
             </dl>
           </section>
 
-          <p className="protection-note">{explanation}</p>
-
-          <section aria-labelledby="price-observations-title" className="proof-section">
-            <div className="section-rule">
-              <p className="utility-label">XRP / USD observations</p>
-              <h2 id="price-observations-title">Price protection evidence</h2>
-            </div>
-            <dl className="price-list">
-              <PriceObservation label="Confirmed funding" observation={receipt.confirmed.fundingPrice} />
-              <PriceObservation label="Confirmed release" observation={receipt.confirmed.releasePrice} />
-            </dl>
-          </section>
+          <SettlementProtection receipt={receipt} />
 
           {evidence ? <EvidenceAttachment evidence={evidence} /> : null}
 
@@ -488,11 +573,13 @@ export function SettlementReceipt({ receipt }: { receipt: ReceiptView }) {
                 <dl className="proof-list">
                   <div className="proof-row">
                     <dt className="evidence-label">Scope commitment</dt>
-                    <dd className="hash">{invoice.scopeHash}</dd>
+                    <dd>{invoice.scopeHash ? <TechnicalIdentifier label="Scope commitment" value={invoice.scopeHash} /> : "No scope commitment"}</dd>
                   </div>
                   <div className="proof-row">
                     <dt className="evidence-label">Evidence commitment</dt>
-                    <dd className="hash">{invoice.evidence?.hash ?? "No evidence hash recorded"}</dd>
+                    <dd>{invoice.evidence?.hash
+                      ? <TechnicalIdentifier label="Evidence commitment" value={invoice.evidence.hash} />
+                      : "No evidence hash recorded"}</dd>
                   </div>
                   <div className="proof-row">
                     <dt className="evidence-label">Current active liabilities</dt>
@@ -501,6 +588,10 @@ export function SettlementReceipt({ receipt }: { receipt: ReceiptView }) {
                   <div className="proof-row">
                     <dt className="evidence-label">Current contract balance</dt>
                     <dd>{invoice.contractFxrpBalance.display}</dd>
+                  </div>
+                  <div className="proof-row">
+                    <dt className="evidence-label">Contract state</dt>
+                    <dd>RELEASED</dd>
                   </div>
                 </dl>
               </div>

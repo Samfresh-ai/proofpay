@@ -2,10 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { getAddress, parseUnits, type Hash } from "viem";
 
 import { buildScopeManifest, type CanonicalManifest, type ScopeManifest } from "@/lib/proofpay-manifests";
+import {
+  contractDeadlineFromLocalInput,
+  formatLocalDeadline,
+  formatUtcDeadline,
+  twentyFourHourDeadline,
+  unixSecondsToLocalInput,
+} from "@/lib/deadline";
 import { proofPayAbi, PROOFPAY_CONTRACT_ADDRESS } from "@/lib/proofpay-contract";
 import {
   buildTransactionIntent,
@@ -16,6 +23,7 @@ import {
 import type { JournalStatus } from "@/lib/transaction-journal";
 
 import { useProofPayWallet } from "./use-proofpay-wallet";
+import { useHydrated } from "./use-hydrated";
 import { useTransactionJournal } from "./use-transaction-journal";
 import {
   TransactionIntentReview,
@@ -32,29 +40,43 @@ interface PreparedCreate {
   error: string | null;
 }
 
-function parseDeadline(value: string): bigint {
-  const milliseconds = new Date(value).getTime();
-  if (!Number.isFinite(milliseconds)) throw new Error("Choose a valid delivery deadline.");
-  const seconds = BigInt(Math.floor(milliseconds / 1_000));
-  if (seconds <= BigInt(Math.floor(Date.now() / 1_000))) {
-    throw new Error("Delivery deadline must be in the future.");
-  }
-  return seconds;
-}
-
 export function CreateMilestoneWorkspace() {
   const router = useRouter();
+  const hydrated = useHydrated();
   const wallet = useProofPayWallet();
   const journal = useTransactionJournal(wallet.actionClient);
   const [locateId, setLocateId] = useState("");
   const [client, setClient] = useState("");
   const [usdTarget, setUsdTarget] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [deadlineSeconds, setDeadlineSeconds] = useState<bigint | null>(null);
   const [title, setTitle] = useState("");
   const [scope, setScope] = useState("");
   const [prepareError, setPrepareError] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(false);
   const [prepared, setPrepared] = useState<PreparedCreate | null>(null);
+
+  const timeZone = hydrated ? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC") : "UTC";
+
+  const deadlineSummary = useMemo(() => deadlineSeconds === null ? null : {
+    local: formatLocalDeadline(deadlineSeconds, timeZone),
+    utc: formatUtcDeadline(deadlineSeconds),
+  }, [deadlineSeconds, timeZone]);
+
+  const updateDeadline = (value: string) => {
+    setDeadline(value);
+    try {
+      setDeadlineSeconds(contractDeadlineFromLocalInput(value, timeZone));
+    } catch {
+      setDeadlineSeconds(null);
+    }
+  };
+
+  const useTwentyFourHourPreset = () => {
+    const instant = twentyFourHourDeadline();
+    setDeadlineSeconds(instant);
+    setDeadline(unixSecondsToLocalInput(instant, timeZone));
+  };
 
   const locate = (event: React.FormEvent) => {
     event.preventDefault();
@@ -81,7 +103,11 @@ export function CreateMilestoneWorkspace() {
       const clientAddress = getAddress(client.trim());
       const usdTargetAtomic = parseUnits(usdTarget.trim(), 6);
       if (usdTargetAtomic <= 0n) throw new Error("Milestone target must be greater than zero.");
-      const deliveryDeadline = parseDeadline(deadline);
+      const deliveryDeadline = deadlineSeconds
+        ?? contractDeadlineFromLocalInput(deadline, timeZone);
+      if (deliveryDeadline <= BigInt(Math.floor(Date.now() / 1_000))) {
+        throw new Error("Delivery deadline must be in the future.");
+      }
       const manifest = buildScopeManifest({
         client: clientAddress,
         freelancer: account,
@@ -107,10 +133,14 @@ export function CreateMilestoneWorkspace() {
         tokenAddress: null,
         amountAtomic: null,
         amountDisplay: "No token transfer",
+        contractDeadline: deliveryDeadline.toString(),
         quoteDeadline: null,
         maximumAtomic: null,
         maximumDisplay: "Not applicable",
         expectedResult: `Create invoice ${invoiceId} with this client, target, deadline, and scope commitment. No FXRP is locked.`,
+        recipientDisplay: "ProofPay escrow records the agreement · no token transfer",
+        changeBeforeConfirmation: "The absolute deadline and scope commitment are frozen. A changed invoice count or wallet context invalidates the intent.",
+        completionProof: "An InvoiceCreated event and the stored invoice terms at the deployed ProofPay escrow contract.",
       });
       const blocking = journal.blocking({ account, invoiceId: intent.invoiceId, action: "create" });
       if (blocking) {
@@ -226,15 +256,34 @@ export function CreateMilestoneWorkspace() {
                 <span>USD target</span>
                 <input inputMode="decimal" onChange={(event) => setUsdTarget(event.target.value)} placeholder="5.00" value={usdTarget} />
               </label>
-              <label>
-                <span>Delivery deadline</span>
-                <input onChange={(event) => setDeadline(event.target.value)} type="datetime-local" value={deadline} />
-              </label>
+              <div className="deadline-field">
+                <label htmlFor="delivery-deadline">
+                  <span>Delivery deadline · local clock time</span>
+                </label>
+                <input
+                  aria-describedby="deadline-timezone"
+                  id="delivery-deadline"
+                  onChange={(event) => updateDeadline(event.target.value)}
+                  type="datetime-local"
+                  value={deadline}
+                />
+                <button className="quiet-button preset-button" onClick={useTwentyFourHourPreset} type="button">
+                  Set 24 hours from now
+                </button>
+                <p className="form-note" id="deadline-timezone">Local timezone: {timeZone}</p>
+              </div>
               <label className="form-span">
                 <span>Scope · one deliverable per line</span>
                 <textarea onChange={(event) => setScope(event.target.value)} rows={5} value={scope} />
               </label>
             </div>
+            {deadlineSummary ? (
+              <dl aria-label="Deadline conversion" className="deadline-summary" data-testid="deadline-summary">
+                <div><dt>Your local time</dt><dd>{deadlineSummary.local}</dd></div>
+                <div><dt>UTC equivalent</dt><dd>{deadlineSummary.utc}</dd></div>
+                <div><dt>Contract timestamp</dt><dd>{deadlineSeconds?.toString()}</dd></div>
+              </dl>
+            ) : null}
             <p className="form-note">The connected wallet becomes the freelancer. Simulation creates no invoice and requests no signature.</p>
             <button
               className="transaction-button"

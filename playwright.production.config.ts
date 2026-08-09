@@ -1,19 +1,19 @@
 import { defineConfig } from "@playwright/test";
 
 const host = "127.0.0.1";
-const port = 3210;
+const port = 3213;
 const baseURL = `http://${host}:${port}`;
 
 export default defineConfig({
   testDir: "./e2e",
-  testMatch: ["**/interface.spec.ts", "**/wallet-actions.spec.ts", "**/hydration.spec.ts"],
+  testMatch: "**/hydration.spec.ts",
   fullyParallel: false,
   workers: 1,
   retries: 0,
-  forbidOnly: Boolean(process.env.CI),
+  forbidOnly: true,
   reporter: "line",
-  timeout: 120_000,
-  outputDir: "artifacts/interface/test-results",
+  timeout: 60_000,
+  outputDir: "artifacts/interface/production-test-results",
   use: {
     baseURL,
     browserName: "chromium",
@@ -22,9 +22,9 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: `/home/samfresh22/.nvm/versions/node/v22.21.1/bin/npm run dev -- --hostname ${host} --port ${port}`,
-    url: `${baseURL}/invoice/1`,
-    timeout: 360_000,
+    command: `/home/samfresh22/.nvm/versions/node/v22.21.1/bin/npm run start -- --hostname ${host} --port ${port}`,
+    url: `${baseURL}/app`,
+    timeout: 120_000,
     reuseExistingServer: false,
     env: {
       ...process.env,

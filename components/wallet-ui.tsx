@@ -2,6 +2,7 @@
 
 import type { Hash } from "viem";
 
+import { formatLocalDeadline, formatUtcDeadline } from "@/lib/deadline";
 import type { JournalEntry, JournalStatus } from "@/lib/transaction-journal";
 import {
   decodeProofPayError,
@@ -11,6 +12,7 @@ import {
 import type { WalletRole } from "@/lib/wallet-policy";
 
 import type { useProofPayWallet } from "./use-proofpay-wallet";
+import { useHydrated } from "./use-hydrated";
 
 type ProofPayWallet = ReturnType<typeof useProofPayWallet>;
 
@@ -20,6 +22,19 @@ function shortAddress(value: string): string {
 
 function deadlineDisplay(value: string | null): string {
   return value === null ? "Not required" : new Date(Number(value) * 1_000).toISOString();
+}
+
+function ContractDeadline({ value }: { value: string }) {
+  const hydrated = useHydrated();
+  const timeZone = hydrated ? (Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC") : "UTC";
+  const seconds = BigInt(value);
+  return (
+    <span className="deadline-intent-value" data-testid="intent-contract-deadline">
+      <span>{formatLocalDeadline(seconds, timeZone)}</span>
+      <span>{formatUtcDeadline(seconds)}</span>
+      <span>Unix seconds · {value}</span>
+    </span>
+  );
 }
 
 function roleLabel(role?: WalletRole): string {
@@ -38,6 +53,25 @@ export function WalletConnectionPanel({
   role?: WalletRole;
   wallet: ProofPayWallet;
 }) {
+  if (!wallet.hydrated) {
+    return (
+      <section
+        aria-busy="true"
+        aria-labelledby="wallet-connection-title"
+        className="wallet-connection"
+        data-testid="wallet-state-loading"
+        role="status"
+      >
+        <div>
+          <p className="utility-label">Wallet</p>
+          <h3 id="wallet-connection-title">Checking wallet connection</h3>
+          <p>Reading the injected wallet state before enabling any ProofPay action.</p>
+        </div>
+        <button className="transaction-button" disabled type="button">Checking wallet</button>
+      </section>
+    );
+  }
+
   if (!wallet.isConnected) {
     return (
       <section aria-labelledby="wallet-connection-title" className="wallet-connection" data-testid="wallet-state-no-wallet">
@@ -129,9 +163,13 @@ export function TransactionIntentReview({
         <div><dt>Connected account</dt><dd className="hash">{intent.account}</dd></div>
         <div><dt>Invoice ID</dt><dd>{intent.invoiceId}</dd></div>
         <div><dt>Token and amount</dt><dd>{intent.token === "None" ? "No token transfer" : intent.amountDisplay}</dd></div>
+        <div><dt>Recipient</dt><dd>{intent.recipientDisplay}</dd></div>
+        {intent.contractDeadline ? <div><dt>Delivery deadline</dt><dd><ContractDeadline value={intent.contractDeadline} /></dd></div> : null}
         <div><dt>Quote deadline</dt><dd className="timestamp">{deadlineDisplay(intent.quoteDeadline)}</dd></div>
         <div><dt>Maximum accepted</dt><dd>{intent.maximumDisplay}</dd></div>
+        <div><dt>What can change</dt><dd>{intent.changeBeforeConfirmation}</dd></div>
         <div><dt>Expected result</dt><dd>{intent.expectedResult}</dd></div>
+        <div><dt>Completion proof</dt><dd>{intent.completionProof}</dd></div>
         <div><dt>Intent hash</dt><dd className="hash">{intent.intentHash}</dd></div>
         {transactionHash ? <div><dt>Transaction hash</dt><dd className="hash">{transactionHash}</dd></div> : null}
       </dl>

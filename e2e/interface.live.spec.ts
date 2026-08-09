@@ -3,7 +3,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
-const artifactDirectory = resolve(process.cwd(), "artifacts", "interface");
+const artifactDirectory = resolve(process.cwd(), "artifacts", "interface-refinement");
 const transactionAction =
   /connect(?: a)? wallet|sign|approve|fund|submit evidence|top[ -]?up|release|refund|cancel|send(?: transaction)?/i;
 
@@ -54,6 +54,13 @@ const expected = {
       time: "2026-08-08 12:12:39 UTC",
     },
   ],
+} as const;
+
+const stageLabels = {
+  AGREED: "Milestone agreed",
+  FUNDED: "FXRP funded",
+  DELIVERED: "Delivery evidence attached",
+  SETTLED: "Payment settled",
 } as const;
 
 async function openLiveRoute(page: Page, route: string, documentTestId: string) {
@@ -107,7 +114,7 @@ async function expectPinnedRead(page: Page) {
 async function expectInvoiceOneFacts(page: Page) {
   const document = page.getByTestId("invoice-document");
   await expect(document.getByRole("heading", { level: 1 })).toHaveText(expected.title);
-  await expect(page.getByTestId("status-stamp")).toHaveText("RELEASED");
+  await expect(page.getByTestId("status-stamp")).toHaveText("SETTLED");
   await expect(document).toContainText("Milestone invoice #1");
   await expect(document).toContainText("Delivery deadline 2026-08-09 11:45:56 UTC");
   await expect(page.getByTestId("invoice-target")).toContainText("$5.00");
@@ -120,19 +127,21 @@ async function expectInvoiceOneFacts(page: Page) {
   await expect(document).toContainText(expected.evidenceHash);
   await expect(page.getByTestId("invoice-liabilities")).toContainText(/0(?:\.0+)? FXRP/);
   await expect(page.getByTestId("invoice-contract-balance")).toContainText(/0(?:\.0+)? FXRP/);
-  await expect(document).toContainText("Payment released");
-  await expect(document).toContainText("View the public receipt.");
+  await expect(document).toContainText("Payment settled");
+  await expect(document).toContainText("View settlement receipt.");
   await expect(document).toContainText(expected.contract);
   await expect(document).toContainText("Flare Testnet Coston2 · chain 114");
   await expectPinnedRead(page);
-  await expect(page.getByRole("link", { name: "Read the confirmed settlement receipt" })).toHaveAttribute(
+  await expect(page.getByRole("link", { name: "View settlement receipt" })).toHaveAttribute(
     "href",
     "/receipt/1",
   );
 
   const rail = page.getByTestId("settlement-rail");
-  for (const stage of expected.lifecycle) await expect(rail).toContainText(stage.stage);
-  await expect(rail.getByText("Confirmed by the current contract state.")).toHaveCount(4);
+  for (const stage of expected.lifecycle) {
+    await expect(rail).toContainText(stageLabels[stage.stage]);
+    await expect(rail).toContainText(`${stage.event} · block ${stage.block}`);
+  }
 }
 
 async function expectReceiptOneFacts(page: Page) {
@@ -144,9 +153,10 @@ async function expectReceiptOneFacts(page: Page) {
   await expect(page.getByTestId("money-locked")).toContainText("5.299945 FXRP");
   await expect(page.getByTestId("money-payout")).toContainText("4.818748 FXRP");
   await expect(page.getByTestId("money-refund")).toContainText("0.481197 FXRP");
-  await expect(document).toContainText(
-    "The client locked 5.299945 FXRP. At release, 4.818748 FXRP covered the $5.00 target. The remaining 0.481197 FXRP returned to the client.",
-  );
+  await expect(document).toContainText("The client funded the milestone plus a 10% FXRP protection buffer.");
+  await expect(document).toContainText("At release, 4.818748 FXRP covered the $5.00 target.");
+  await expect(document).toContainText("The unused 0.481197 FXRP returned to the client.");
+  await expect(page.getByTestId("price-movement")).toContainText("−0.01%");
   await expect(document).toContainText("$1.037747");
   await expect(document).toContainText("Feed time 2026-08-08 12:11:59 UTC");
   await expect(document).toContainText("$1.037614");
@@ -166,14 +176,14 @@ async function expectReceiptOneFacts(page: Page) {
 
 async function expandReceiptEvidence(page: Page) {
   const evidenceDetails = page.getByTestId("evidence-details");
-  const evidenceSummary = evidenceDetails.locator("summary");
+  const evidenceSummary = evidenceDetails.locator(":scope > summary");
   await evidenceSummary.focus();
   await expect(evidenceSummary).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(evidenceDetails).toHaveAttribute("open", "");
 
   const contractDetails = page.getByTestId("contract-details");
-  const contractSummary = contractDetails.locator("summary");
+  const contractSummary = contractDetails.locator(":scope > summary");
   await contractSummary.focus();
   await expect(contractSummary).toBeFocused();
   await page.keyboard.press("Enter");
@@ -186,7 +196,7 @@ async function expectExpandedReceiptFacts(page: Page) {
   await expect(lifecycleRows).toHaveCount(4);
 
   for (const entry of expected.lifecycle) {
-    const row = lifecycleRows.filter({ hasText: entry.stage });
+    const row = lifecycleRows.filter({ hasText: stageLabels[entry.stage] });
     await expect(row).toContainText(entry.event);
     await expect(row).toContainText(entry.hash);
     await expect(row).toContainText(`Block ${entry.block} · ${entry.time}`);
@@ -210,13 +220,11 @@ test("one live invoice read proves desktop and mobile evidence", async ({ page }
   await openLiveRoute(page, "/invoice/1", "invoice-document");
   await expectInvoiceOneFacts(page);
   await expectNoAccessibilityViolations(page);
-  await capture(page, "invoice-1-desktop.png");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expectInvoiceOneFacts(page);
   await expectNoHorizontalOverflow(page);
   await expectNoAccessibilityViolations(page);
-  await capture(page, "invoice-1-mobile.png");
 });
 
 test("one live receipt reconciliation proves desktop, mobile, and expanded evidence", async ({ page }) => {
@@ -224,13 +232,11 @@ test("one live receipt reconciliation proves desktop, mobile, and expanded evide
   await openLiveRoute(page, "/receipt/1", "receipt-document");
   await expectReceiptOneFacts(page);
   await expectNoAccessibilityViolations(page);
-  await capture(page, "receipt-1-desktop.png");
 
   await page.setViewportSize({ width: 390, height: 844 });
   await expectReceiptOneFacts(page);
   await expectNoHorizontalOverflow(page);
   await expectNoAccessibilityViolations(page);
-  await capture(page, "receipt-1-mobile.png");
 
   await expandReceiptEvidence(page);
   await expectExpandedReceiptFacts(page);
@@ -241,5 +247,69 @@ test("one live receipt reconciliation proves desktop, mobile, and expanded evide
   await expectExpandedReceiptFacts(page);
   await expectNoHorizontalOverflow(page);
   await expectNoAccessibilityViolations(page);
-  await capture(page, "receipt-1-evidence-expanded.png");
+});
+
+test("invoice 2 proves the refined settlement record and required screenshots", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await openLiveRoute(page, "/invoice/2", "invoice-document");
+  const invoice = page.getByTestId("invoice-document");
+  await expect(invoice.locator(".wordmark")).toHaveText("PROOFPAY / MILESTONE RECORD");
+  await expect(page.getByTestId("status-stamp")).toHaveText("SETTLED");
+  await expect(invoice.getByRole("heading", { level: 1 })).toHaveText("Verify ProofPay wallet actions on Coston2");
+  await expect(page.getByTestId("invoice-target")).toContainText("$2.00");
+  await expect(page.getByTestId("invoice-current-lock")).toContainText("2.126887 FXRP");
+  await expect(page.getByTestId("invoice-current-lock")).toContainText("FXRP locked at funding");
+  await expect(invoice).toContainText("The freelancer was paid and the unused FXRP returned to the client.");
+  await expect(invoice).toContainText("At release, 1.933309 FXRP covered the $2.00 target.");
+  await expect(invoice).toContainText("The unused 0.193578 FXRP returned to the client.");
+  await expect(page.getByTestId("price-movement")).toContainText("+0.01%");
+  await expect(page.getByTestId("invoice-contract-state")).toContainText("RELEASED");
+  const rail = page.getByTestId("settlement-rail");
+  for (const [label, event, block] of [
+    ["Milestone agreed", "InvoiceCreated", "33804596"],
+    ["FXRP funded", "InvoiceFunded", "33804808"],
+    ["Delivery evidence attached", "EvidenceSubmitted", "33804822"],
+    ["Payment settled", "InvoiceReleased", "33804839"],
+  ] as const) {
+    await expect(rail).toContainText(label);
+    await expect(rail).toContainText(`${event} · block ${block}`);
+  }
+  await expect(invoice.locator(".identifier-short").first()).toHaveText(/^0x[0-9a-f]{4}…[0-9a-f]{5}$/iu);
+  await expectNoAccessibilityViolations(page);
+  await capture(page, "01-invoice-desktop.png");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.locator(".mobile-lifecycle-summary")).toContainText("Agreed");
+  await expect(page.locator(".mobile-lifecycle-summary")).toContainText("Funded");
+  await expect(page.locator(".mobile-lifecycle-summary")).toContainText("Delivered");
+  await expect(page.locator(".mobile-lifecycle-summary")).toContainText("Settled");
+  await expectNoHorizontalOverflow(page);
+  await expectNoAccessibilityViolations(page);
+  await capture(page, "02-invoice-mobile.png");
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await openLiveRoute(page, "/receipt/2", "receipt-document");
+  const receipt = page.getByTestId("receipt-document");
+  await expect(receipt.locator(".wordmark")).toHaveText("PROOFPAY / SETTLEMENT RECEIPT");
+  await expect(page.getByTestId("money-locked")).toContainText("2.126887 FXRP");
+  await expect(page.getByTestId("money-payout")).toContainText("1.933309 FXRP");
+  await expect(page.getByTestId("money-refund")).toContainText("0.193578 FXRP");
+  await expect(page.getByTestId("price-movement")).toContainText("+0.01%");
+  await expectNoAccessibilityViolations(page);
+  await capture(page, "03-receipt-desktop.png");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expectNoHorizontalOverflow(page);
+  await expectNoAccessibilityViolations(page);
+  await capture(page, "04-receipt-mobile.png");
+
+  await expandReceiptEvidence(page);
+  await expect(receipt).toContainText("InvoiceCreated");
+  await expect(receipt).toContainText("InvoiceReleased");
+  await expect(receipt).toContainText("Contract state");
+  await expect(receipt).toContainText("RELEASED");
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await expectNoHorizontalOverflow(page);
+  await expectNoAccessibilityViolations(page);
+  await capture(page, "05-expanded-evidence.png");
 });

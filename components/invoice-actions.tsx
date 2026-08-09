@@ -1,10 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { getAddress, type Hash } from "viem";
 
 import type { InvoiceView } from "@/lib/proofpay";
+import {
+  createFrozenFundingIntent,
+  fundingIntentInvalidationReason,
+  nextFundingStep,
+  type FrozenFundingIntent,
+} from "@/lib/funding-intent";
 import { buildEvidenceManifest, type CanonicalManifest, type EvidenceManifest } from "@/lib/proofpay-manifests";
 import {
   fxrpAbi,
@@ -26,7 +32,6 @@ import {
   formatAtomicUnits,
   formatFxrpAmount,
   formatQuoteTimestamp,
-  type FundingPlan,
   type ReleaseQuote,
   type TransactionIntent,
 } from "@/lib/transaction-intents";
@@ -34,6 +39,7 @@ import type { JournalStatus } from "@/lib/transaction-journal";
 import { deriveInvoiceActions, type InvoiceWalletAction } from "@/lib/wallet-policy";
 
 import { useProofPayWallet } from "./use-proofpay-wallet";
+import { useFundingIntent } from "./use-funding-intent";
 import { useTransactionJournal } from "./use-transaction-journal";
 import {
   TransactionIntentReview,
@@ -42,11 +48,8 @@ import {
 } from "./wallet-ui";
 
 interface FundingPreview {
-  plan: FundingPlan;
-  price: bigint;
-  priceDecimals: number;
-  priceTimestamp: bigint;
-  quoteDeadline: bigint;
+  intent: FrozenFundingIntent;
+  allowanceFxrp: bigint | null;
 }
 
 interface PreparedAction {
@@ -74,6 +77,7 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
   const router = useRouter();
   const wallet = useProofPayWallet();
   const journal = useTransactionJournal(wallet.actionClient);
+  const fundingIntent = useFundingIntent(invoice.id, wallet.account);
   const [toleranceBps, setToleranceBps] = useState(PROOFPAY_DEFAULT_TOLERANCE_BPS);
   const [fundingPreview, setFundingPreview] = useState<FundingPreview | null>(null);
   const [releaseQuote, setReleaseQuote] = useState<ReleaseQuote | null>(null);
@@ -99,6 +103,24 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
   const invoiceId = BigInt(invoice.id);
   const usdTargetAtomic = BigInt(invoice.usdTarget?.atomic ?? "0");
   const lockedFxrp = BigInt(invoice.currentFxrpLocked?.atomic ?? "0");
+
+  useEffect(() => {
+    if (!fundingIntent.intent || !wallet.account || wallet.chainId === undefined) return;
+    const reason = fundingIntentInvalidationReason(fundingIntent.intent, {
+      account: getAddress(wallet.account),
+      chainId: wallet.chainId,
+      invoiceId,
+      nowSeconds: BigInt(Math.floor(Date.now() / 1_000)),
+    });
+    if (!reason) return;
+    fundingIntent.clear(fundingIntent.intent.intentHash);
+  }, [fundingIntent, invoiceId, wallet.account, wallet.chainId]);
+
+  const visibleFundingPreview = fundingIntent.intent
+    ? fundingPreview?.intent.intentHash === fundingIntent.intent.intentHash
+      ? fundingPreview
+      : { intent: fundingIntent.intent, allowanceFxrp: null }
+    : null;
 
   const assertReady = (action?: InvoiceWalletAction) => {
     if (wallet.chainState !== "ready" || !wallet.account || !actionClient) {
@@ -128,42 +150,74 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
   const prepareFunding = async () => {
     setActionError(null);
     setPreparing(true);
+    let activeFundingIntent = fundingIntent.intent;
     try {
       const { account, client } = assertReady("fund");
-      const quote = await client.simulateContract({
-        account,
-        address: PROOFPAY_CONTRACT_ADDRESS,
-        abi: proofPayAbi,
-        functionName: "quoteFunding",
-        args: [invoiceId],
-      });
-      const [requiredFxrp, price, priceDecimals, priceTimestamp] = quote.result;
+      const nowSeconds = BigInt(Math.floor(Date.now() / 1_000));
+      let frozen = activeFundingIntent;
+      if (frozen) {
+        const invalidation = fundingIntentInvalidationReason(frozen, {
+          account,
+          chainId: wallet.chainId ?? 0,
+          invoiceId,
+          nowSeconds,
+        });
+        if (invalidation) {
+          fundingIntent.clear(frozen.intentHash);
+          setFundingPreview(null);
+          frozen = null;
+        }
+      }
+
       const allowance = await client.readContract({
         address: PROOFPAY_FXRP_ADDRESS,
         abi: fxrpAbi,
         functionName: "allowance",
         args: [account, PROOFPAY_CONTRACT_ADDRESS],
       });
-      const plan = buildFundingPlan({
-        usdTargetAtomic,
-        quoteRequiredFxrp: requiredFxrp,
-        price,
-        priceDecimals,
-        toleranceBps,
-        allowanceFxrp: allowance,
-      });
-      const deadline = quoteDeadline();
-      setFundingPreview({ plan, price, priceDecimals, priceTimestamp, quoteDeadline: deadline });
 
-      if (plan.approvalRequired) {
+      if (!frozen) {
+        const quote = await client.simulateContract({
+          account,
+          address: PROOFPAY_CONTRACT_ADDRESS,
+          abi: proofPayAbi,
+          functionName: "quoteFunding",
+          args: [invoiceId],
+        });
+        const [requiredFxrp, price, priceDecimals, priceTimestamp] = quote.result;
+        const plan = buildFundingPlan({
+          usdTargetAtomic,
+          quoteRequiredFxrp: requiredFxrp,
+          price,
+          priceDecimals,
+          toleranceBps,
+          allowanceFxrp: allowance,
+        });
+        frozen = createFrozenFundingIntent({
+          account,
+          invoiceId,
+          plan,
+          price,
+          priceDecimals,
+          priceTimestamp,
+          quoteDeadline: quoteDeadline(),
+        });
+        fundingIntent.freeze(frozen);
+        activeFundingIntent = frozen;
+      }
+
+      setFundingPreview({ intent: frozen, allowanceFxrp: allowance });
+      const maximumFxrp = BigInt(frozen.maximumFxrp);
+
+      if (nextFundingStep(frozen, allowance) === "approve") {
         const approval = await client.simulateContract({
           account,
           address: PROOFPAY_FXRP_ADDRESS,
           abi: fxrpAbi,
           functionName: "approve",
-          args: [PROOFPAY_CONTRACT_ADDRESS, plan.exactApprovalFxrp],
+          args: [PROOFPAY_CONTRACT_ADDRESS, maximumFxrp],
         });
-        const intent = buildApprovalIntent({ account, invoiceId, maximumFxrp: plan.exactApprovalFxrp });
+        const intent = buildApprovalIntent({ account, invoiceId, maximumFxrp });
         acceptPrepared({
           intent,
           send: async () => await client.writeContract(approval.request),
@@ -179,15 +233,15 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
         address: PROOFPAY_CONTRACT_ADDRESS,
         abi: proofPayAbi,
         functionName: "fundInvoice",
-        args: [invoiceId, plan.maximumFxrp, deadline],
+        args: [invoiceId, maximumFxrp, BigInt(frozen.quoteDeadline)],
       });
       const intent = buildFundingIntent({
         account,
         invoiceId,
         usdTargetAtomic,
-        requiredFxrp: plan.protectedRequiredFxrp,
-        maximumFxrp: plan.maximumFxrp,
-        quoteDeadline: deadline,
+        requiredFxrp: BigInt(frozen.previewRequiredFxrp),
+        maximumFxrp,
+        quoteDeadline: BigInt(frozen.quoteDeadline),
       });
       acceptPrepared({
         intent,
@@ -197,9 +251,14 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
         error: null,
       });
     } catch (error) {
+      const message = decodeProofPayError(error);
+      if (/expired|exceeds the maximum/iu.test(message) && activeFundingIntent) {
+        fundingIntent.clear(activeFundingIntent.intentHash);
+        setFundingPreview(null);
+      }
       setActionError(error instanceof Error && !/execution reverted|simulation/iu.test(error.message)
         ? error.message
-        : decodeProofPayError(error));
+        : message);
     } finally {
       setPreparing(false);
     }
@@ -437,7 +496,10 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
       const status = receipt.status === "success" ? "confirmed" : "reverted";
       journal.transition(prepared.intent.intentHash, status, hash);
       setPrepared({ ...prepared, status, transactionHash: hash, error: null });
-      if (status === "confirmed") router.refresh();
+      if (status === "confirmed" && prepared.intent.action === "fund" && fundingIntent.intent) {
+        fundingIntent.clear(fundingIntent.intent.intentHash);
+      }
+      if (status === "confirmed" && prepared.intent.action !== "approve") router.refresh();
     } catch (error) {
       if (hash === null) {
         journal.transition(prepared.intent.intentHash, "prepared", null);
@@ -487,7 +549,11 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
             <>
               <label className="tolerance-control">
                 <span>Transaction tolerance</span>
-                <select onChange={(event) => setToleranceBps(BigInt(event.target.value))} value={toleranceBps.toString()}>
+                <select
+                  disabled={fundingIntent.intent !== null}
+                  onChange={(event) => setToleranceBps(BigInt(event.target.value))}
+                  value={toleranceBps.toString()}
+                >
                   <option value="50">0.5%</option>
                   <option value="100">1%</option>
                   <option value="200">2%</option>
@@ -496,7 +562,11 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
                 </select>
               </label>
               <button className="transaction-button" disabled={preparing} onClick={() => void prepareFunding()} type="button">
-                {preparing ? "Simulating funding" : "Preview and simulate funding"}
+                {preparing
+                  ? "Simulating funding"
+                  : fundingIntent.intent
+                    ? "Continue with saved funding intent"
+                    : "Preview and simulate funding"}
               </button>
             </>
           ) : null}
@@ -552,21 +622,22 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
         </div>
       ) : null}
 
-      {fundingPreview ? (
+      {visibleFundingPreview ? (
         <section aria-labelledby="funding-preview-title" className="action-quote" data-testid="funding-preview">
           <div className="preview-heading">
             <div><p className="utility-label">Live funding simulation</p><h3 id="funding-preview-title">Preview quote</h3></div>
             <span className="unconfirmed-mark">Not confirmed</span>
           </div>
-          <p>No FXRP has been approved or funded by this preview.</p>
+          <p>This preview is frozen until its deadline. Approval and funding use this same accepted maximum.</p>
           <dl className="intent-list">
-            <div><dt>Current XRP / USD price</dt><dd>{priceDisplay(fundingPreview.price, fundingPreview.priceDecimals)}</dd></div>
-            <div><dt>Feed timestamp</dt><dd className="timestamp">{formatQuoteTimestamp(fundingPreview.priceTimestamp)}</dd></div>
-            <div><dt>Required base amount</dt><dd>{formatFxrpAmount(fundingPreview.plan.baseRequiredFxrp)}</dd></div>
-            <div><dt>With 10% funding protection</dt><dd>{formatFxrpAmount(fundingPreview.plan.protectedRequiredFxrp)}</dd></div>
-            <div><dt>{toleranceLabel(fundingPreview.plan.toleranceBps)} transaction maximum</dt><dd>{formatFxrpAmount(fundingPreview.plan.maximumFxrp)}</dd></div>
-            <div><dt>Current allowance</dt><dd>{formatFxrpAmount(fundingPreview.plan.allowanceFxrp)}</dd></div>
-            <div><dt>Quote deadline</dt><dd className="timestamp">{formatQuoteTimestamp(fundingPreview.quoteDeadline)}</dd></div>
+            <div><dt>Preview XRP / USD price</dt><dd>{priceDisplay(BigInt(visibleFundingPreview.intent.price), visibleFundingPreview.intent.priceDecimals)}</dd></div>
+            <div><dt>Feed timestamp</dt><dd className="timestamp">{formatQuoteTimestamp(BigInt(visibleFundingPreview.intent.priceTimestamp))}</dd></div>
+            <div><dt>Required base amount</dt><dd>{formatFxrpAmount(BigInt(visibleFundingPreview.intent.baseRequiredFxrp))}</dd></div>
+            <div><dt>With 10% funding protection</dt><dd>{formatFxrpAmount(BigInt(visibleFundingPreview.intent.previewRequiredFxrp))}</dd></div>
+            <div><dt>{toleranceLabel(BigInt(visibleFundingPreview.intent.toleranceBps))} transaction maximum</dt><dd>{formatFxrpAmount(BigInt(visibleFundingPreview.intent.maximumFxrp))}</dd></div>
+            <div><dt>Current allowance</dt><dd>{visibleFundingPreview.allowanceFxrp === null ? "Read before the next wallet action" : formatFxrpAmount(visibleFundingPreview.allowanceFxrp)}</dd></div>
+            <div><dt>Quote deadline</dt><dd className="timestamp">{formatQuoteTimestamp(BigInt(visibleFundingPreview.intent.quoteDeadline))}</dd></div>
+            <div><dt>Funding intent</dt><dd className="hash">{visibleFundingPreview.intent.intentHash}</dd></div>
           </dl>
         </section>
       ) : null}
@@ -578,7 +649,7 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
             <span className="unconfirmed-mark">Not confirmed</span>
           </div>
           <p>{releaseQuote.topUpFxrp > 0n
-            ? `The escrow is short by ${formatFxrpAmount(releaseQuote.topUpFxrp)}. Nothing has been released.`
+            ? `The escrow no longer covers the milestone target. No payment has been released. The exact shortfall is ${formatFxrpAmount(releaseQuote.topUpFxrp)}.`
             : "The current lock covers the previewed payout. No payment has been released by this preview."}</p>
           <dl className="intent-list">
             <div><dt>Current locked amount</dt><dd>{formatFxrpAmount(lockedFxrp)}</dd></div>

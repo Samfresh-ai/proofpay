@@ -33,10 +33,10 @@ test("fixture invoice 1 renders the released acceptance values without producing
   await openRoute(page, "/invoice/1");
 
   await expect(page.getByTestId("invoice-document")).toBeVisible();
-  await expect(page.getByTestId("status-stamp")).toContainText("RELEASED");
+  await expect(page.getByTestId("status-stamp")).toContainText("SETTLED");
   await expect(page.getByTestId("invoice-target")).toContainText("$5.00");
   await expect(page.getByTestId("invoice-current-lock")).toContainText("5.299945 FXRP");
-  await expect(page.getByRole("link", { name: "Read the confirmed settlement receipt" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "View settlement receipt" })).toBeVisible();
   await expectReadOnlyDocument(page);
 });
 
@@ -76,7 +76,7 @@ test("fixture-only top-up sample is labelled and never presented as a confirmed 
   await expect(page.getByText("Scope commitment", { exact: true })).toHaveCount(0);
   await expect(page.getByTestId("invoice-document")).not.toContainText("Pinned read");
   await expect(page.getByRole("link", { name: "Open the ProofPay contract on the Coston2 explorer" })).toHaveCount(0);
-  await expect(page.getByRole("link", { name: "Read the confirmed settlement receipt" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "View settlement receipt" })).toHaveCount(0);
   await expectReadOnlyDocument(page);
   await expectNoHorizontalOverflow(page);
 });

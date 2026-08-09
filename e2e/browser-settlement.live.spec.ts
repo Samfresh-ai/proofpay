@@ -85,7 +85,7 @@ async function executePrepared(
 }
 
 async function expectStatus(page: Page, status: "CREATED" | "FUNDED" | "SUBMITTED" | "RELEASED"): Promise<void> {
-  await expect(page.getByTestId("status-stamp")).toHaveText(status, { timeout: 90_000 });
+  await expect(page.getByTestId("status-stamp")).toHaveText(status === "RELEASED" ? "SETTLED" : status, { timeout: 90_000 });
 }
 
 async function screenshot(page: Page, name: string): Promise<void> {
@@ -293,15 +293,11 @@ test("settles one new Coston2 invoice through the injected browser wallet path",
     await expect(page.getByTestId("funding-preview")).toContainText("10% funding protection");
     await expect(page.getByTestId("funding-preview")).toContainText("2% transaction maximum");
     await screenshot(page, "02-client-funding-intent.png");
-    let approvalAttempts = 0;
-    while (prepared.text.includes("Approve up to")) {
-      approvalAttempts += 1;
-      if (approvalAttempts > 4) throw new Error("Funding quote movement required more than four exact approval refreshes.");
+    if (prepared.text.includes("Approve up to")) {
       expect(prepared.text).toContain("FXRP");
       expect(prepared.text).toContain(CONTRACT);
       await executePrepared(page, bridge, "approveFunding", invoiceRoute);
-      await page.getByRole("button", { name: "Preview and simulate funding" }).click();
-      journal.friction.quoteRefreshes += 1;
+      await page.getByRole("button", { name: "Continue with saved funding intent" }).click();
       prepared = await visibleIntent(page);
     }
     expect(prepared.text).toContain("Fund this");

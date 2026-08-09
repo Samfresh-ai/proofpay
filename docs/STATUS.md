@@ -1,15 +1,16 @@
 # ProofPay durable status
 
-Updated: 2026-08-08 22:46 WAT
+Updated: 2026-08-09
 
 ## Current state
 
-- Active phase: Phase 0 through Phase 5A complete.
-- Overall decision: `PHASE_5A_PASS`; the live Coston2 settlement now has a validated read-only
-  invoice and receipt interface. The next decision is whether to authorize wallet actions.
-- Application UI: `/invoice/[id]` and `/receipt/1` are implemented as a read-only Next.js
-  interface with live Coston2 reconciliation, responsive screenshots, and automated accessibility
-  checks. No wallet or state-changing control exists.
+- Active phase: Phase 0 through Phase 5C complete.
+- Overall decision: `PHASE_5C_PASS`; the browser-proved settlement interface has corrected deadline
+  handling, one stable funding intent, a deterministic wallet hydration boundary, and refined
+  settlement evidence. The next decision is whether to authorize public deployment.
+- Application UI: `/app`, `/invoice/[id]`, and `/receipt/[id]` provide role-aware wallet action
+  preparation and verified read-only settlement records. Phase 5C added no transaction, contract,
+  backend, indexer, database, authentication, or analytics behavior.
 - Escrow contract: core implemented, fuzzed, statefully invariant-tested, deployed to
   Coston2, and source-verified; not audited or claimed production-ready.
 - Foundry: pinned production contract, deterministic mocks, 56 Phase 3A unit tests, seven passing
@@ -826,3 +827,61 @@ Gate: `PASS` with one nonblocking delivery-window limitation.
 
 - Commit subject on PASS: `proof: settle ProofPay invoice through browser`.
 - Next decision: `READY FOR INTERFACE REFINEMENT`.
+
+## Phase 5C - interface refinement
+
+Gate: `PASS`
+
+### Defects corrected
+
+- Deadline conversion now uses an explicit IANA timezone and Unix seconds. The 24-hour preset adds
+  exactly `86,400` seconds, and the signing review shows local time, timezone/offset, UTC, and
+  contract seconds. Historical invoice 2 remains unchanged at `82,853` seconds.
+- Funding now freezes one 2%-tolerance intent across approval and funding. Invoice, account, chain,
+  preview, protected base, maximum, deadline, and hash are persisted browser-locally. Approval is
+  exact and requested only when allowance is insufficient; unlimited approval is absent.
+- Wallet state crosses an explicit client hydration boundary. Deterministic server markup and the
+  initial client render share an accessible loading state; development and production checks found
+  zero hydration warnings.
+
+### Settlement presentation
+
+- Released public records use `SETTLED` and `Payment settled`; `RELEASED` appears only in technical
+  contract evidence. Invoice and receipt mastheads now name the milestone record and settlement
+  receipt directly.
+- The rail binds every stage to its verified event, block, transaction, amount, or commitment, with
+  human meaning first. Mobile preserves a compact agreed-to-settled summary without removing the
+  detailed evidence.
+- Confirmed settlement economics explain the 10% protection, payout, refund, two price observations,
+  and percentage movement. Short identifiers expose copy, reveal, and explorer actions without
+  forcing full hashes into mobile typography.
+- The action band retains one role-aware primary action and expands the prepared intent with its
+  maximum movement, recipient, possible pre-confirmation change, and completion proof.
+
+### Validation and evidence
+
+- `npm run lint`, `npm run typecheck`, `npm run test:unit`, and `npm run build`: passed; unit suite
+  totals 48 tests.
+- `npm run test:e2e`: 12 passed, including deadline display, stable approval/funding behavior,
+  reload preservation, wallet action flows, hydration warnings, accessibility, and mobile overflow.
+- `npm run test:e2e:production`: one production hydration test passed with zero warnings.
+- `npm run test:e2e:live`: three read-only invoice/receipt tests passed with desktop, mobile,
+  expanded-evidence accessibility checks and no transaction controls.
+- Invoice 1 reconciliation and invoice 2 browser-settlement verification passed together at pinned
+  Coston2 block `33807030`; both remain released, liabilities and contract FXRP balance remain zero,
+  and no transaction was sent.
+- The exact browser-secret scan passed. Protected contract, deployment, and existing receipt
+  evidence were unchanged. Seven visually inspected screenshots are in
+  `artifacts/interface-refinement/`. `git diff --check` passed.
+
+### Remaining boundary
+
+This is automated Coston2 testnet evidence. It is not human usability validation, an audit,
+mainnet behavior, legal escrow, fiat settlement, or a production-security claim. Generic historical
+receipt discovery remains limited to preserved locators, and browser-local intents are not
+cross-device coordination.
+
+### Phase completion
+
+- Commit subject on PASS: `refactor: refine ProofPay settlement experience`.
+- Next decision: `READY FOR PUBLIC DEPLOYMENT`.

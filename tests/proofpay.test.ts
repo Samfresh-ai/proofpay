@@ -94,7 +94,7 @@ describe("ProofPay Phase 5A data boundary", () => {
     expect(invoice.preview).toBeUndefined();
     expect(invoice.receiptLocatorAvailable).toBe(true);
     expect(invoice.sampleScenario).toBeUndefined();
-    expect(invoice.nextStep).toBe("View the public receipt.");
+    expect(invoice.nextStep).toBe("View settlement receipt.");
     expect(invoice.lifecycle.map((stage) => stage.reached)).toEqual([true, true, true, true]);
   });
 
@@ -243,8 +243,8 @@ describe("ProofPay Phase 5A data boundary", () => {
     expect(copy.nextStep).toContain(
       "no verified receipt locator",
     );
-    expect(copy.summary).toContain("release state and price are confirmed");
-    expect(copy.summary).not.toMatch(/payout|refund/i);
+    expect(copy.summary).toBe("The freelancer was paid and the unused FXRP returned to the client.");
+    expect(copy.summary).not.toMatch(/[0-9].*FXRP/u);
   });
 
   it("rejects unknown data modes instead of falling back", async () => {

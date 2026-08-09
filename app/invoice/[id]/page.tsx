@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 import { EmptyDocument, MilestoneDocument } from "@/components/proofpay";
-import { getInvoiceView, parseInvoiceId, ProofPayDataError } from "@/lib/proofpay";
+import { getInvoiceView, getReceiptView, parseInvoiceId, ProofPayDataError } from "@/lib/proofpay";
 
 export const metadata: Metadata = {
   title: "Milestone invoice",
@@ -61,5 +61,13 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       />
     );
   }
-  return <MilestoneDocument invoice={invoice} />;
+  const receipt = invoice.status === "RELEASED" && invoice.receiptLocatorAvailable
+    ? await getReceiptView(invoice.id)
+    : null;
+  return (
+    <MilestoneDocument
+      invoice={receipt ? { ...invoice, lifecycle: receipt.lifecycle } : invoice}
+      {...(receipt ? { receipt } : {})}
+    />
+  );
 }

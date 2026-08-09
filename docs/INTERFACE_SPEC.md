@@ -287,3 +287,67 @@ Two issues are preserved for refinement: `datetime-local` timezone interpretatio
 `82,853`-second confirmed delivery window instead of exactly `86,400`, and restored injected-wallet
 state emitted a development hydration warning before client rendering recovered. Neither value is
 hidden or generalized into a production-readiness claim.
+
+## Phase 5C settlement-experience refinement
+
+Phase 5C preserves the editorial financial-document direction and fixes the two Phase 5B2 defects
+without changing the contract, deployment, receipt locators, or transaction policy.
+
+### Deadline boundary
+
+- The creation form converts explicit clock fields and an IANA timezone into one Unix timestamp.
+  It does not pass a timezone-free string to `Date` parsing.
+- The 24-hour preset adds exactly `86,400` seconds to the current epoch instant. It does not imply
+  that the window starts after confirmation.
+- Before signing, the form and transaction intent show the selected local clock time with timezone
+  and offset, its UTC equivalent, and the exact contract seconds.
+- Nonexistent daylight-saving clock times are rejected. When a clock time occurs twice during a
+  fall-back transition, the earlier matching instant is selected deterministically.
+- Invoice 2 remains immutable historical evidence with an `82,853`-second creation-to-deadline
+  interval; the interface does not rewrite or relabel that value.
+
+### Stable funding intent
+
+One frozen funding intent binds the preview requirement, 10% protected base, accepted 2% maximum,
+quote deadline, invoice, account, chain, contract, and intent hash. The browser may request one
+exact approval for that maximum, then simulate and fund with the same maximum and deadline. It
+does not refresh while approval is pending or confirmed. Expiry, an amount above the maximum, or a
+different account, chain, or invoice invalidates the intent. Existing sufficient allowance skips
+approval; unlimited approval is never prepared. The contract still calculates and pulls only the
+current required amount.
+
+### Hydration and hierarchy
+
+Wallet-derived account, chain, connection, and action state remain hidden until a client hydration
+boundary has been crossed. Server and first-client markup use the same accessible loading panel,
+and the document headings and evidence hierarchy do not change. Development and production
+browser tests treat any hydration warning as a failure.
+
+Released public surfaces use `SETTLED`, `Payment settled`, and `View settlement receipt`.
+`RELEASED` is shown only as technical contract state. The invoice and receipt mastheads are
+`PROOFPAY / MILESTONE RECORD` and `PROOFPAY / SETTLEMENT RECEIPT`; reader copy uses `ProofPay
+escrow`, while `ProofPayEscrow` remains only for the deployed contract.
+
+The settlement rail leads with `Milestone agreed`, `FXRP funded`, `Delivery evidence attached`,
+and `Payment settled`. Verified event names, blocks, transactions, amounts, and commitments sit
+beneath those human meanings. Mobile adds `Agreed -> Funded -> Delivered -> Settled` near the
+invoice top and keeps the detailed rail below. Full identifiers are replaced by a stable shortened
+form with copy and reveal controls; explorer links remain available where the identifier has a
+canonical Coston2 destination.
+
+Confirmed released views explain the 10% funding protection using the actual lock, payout, refund,
+funding price, release price, and percentage movement. No chart or inferred economic value is
+introduced. Sample top-up states remain visibly fixture-only and say that the escrow no longer
+covers the target and no payment has been released.
+
+Each role-aware action remains one band inside the milestone document. Its prepared intent answers
+what happens, the token maximum, recipient, what can move before confirmation, and the evidence
+that proves completion. Primary labels name the product action, such as `Fund this $5 milestone`
+or `Release payment`; `Confirm transaction` is not used as a primary label.
+
+Phase 5C validation passed 48 unit tests, 12 deterministic browser tests, one production hydration
+test, three live read-only browser tests, lint, strict typechecking, the production build, invoice 1
+reconciliation, invoice 2 receipt verification, exact secret scanning, accessibility scans, mobile
+overflow checks, and `git diff --check`. Seven visually inspected screenshots are under
+`artifacts/interface-refinement/`. This remains automated Coston2 testnet evidence, not human
+usability, audit, mainnet, legal-escrow, or production-readiness evidence.

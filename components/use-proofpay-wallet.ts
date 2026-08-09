@@ -13,7 +13,10 @@ import {
 import { PROOFPAY_CHAIN_ID } from "@/lib/proofpay-contract";
 import { getChainGuardState } from "@/lib/wallet-policy";
 
+import { useHydrated } from "./use-hydrated";
+
 export function useProofPayWallet() {
+  const hydrated = useHydrated();
   const account = useAccount();
   const chainId = account.chainId;
   const connect = useConnect();
@@ -28,10 +31,10 @@ export function useProofPayWallet() {
     ?? connect.connectors[0];
 
   return {
-    account: account.address,
-    actionClient,
-    chainId,
-    chainState: getChainGuardState(account.isConnected, chainId),
+    account: hydrated ? account.address : undefined,
+    actionClient: hydrated ? actionClient : undefined,
+    chainId: hydrated ? chainId : undefined,
+    chainState: hydrated ? getChainGuardState(account.isConnected, chainId) : "no_wallet" as const,
     connectError: connect.error,
     connectPending: connect.isPending,
     connectWallet: async () => {
@@ -39,7 +42,8 @@ export function useProofPayWallet() {
       await connect.connectAsync({ connector: injectedConnector });
     },
     disconnectWallet: () => disconnect.disconnect(),
-    isConnected: account.isConnected,
+    hydrated,
+    isConnected: hydrated && account.isConnected,
     switchError: switchChain.error,
     switchPending: switchChain.isPending,
     switchToCoston2: async () => {

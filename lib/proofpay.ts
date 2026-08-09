@@ -112,6 +112,7 @@ export interface ReceiptLifecycleView extends InvoiceLifecycleView {
   blockNumber: string;
   blockTimestamp: TimestampView;
   explorerUrl: string;
+  detail: string;
 }
 
 export interface ReleasePreviewView {
@@ -725,10 +726,10 @@ async function getLiveReceiptView(invoiceId: bigint): Promise<ReceiptView> {
 
   if (invoice.evidence) invoice.evidence.uri = evidenceUri;
   const lifecycle = [
-    receiptLifecycle("AGREED", created, identity),
-    receiptLifecycle("FUNDED", funded, identity),
-    receiptLifecycle("DELIVERED", evidence, identity),
-    receiptLifecycle("SETTLED", released, identity),
+    receiptLifecycle("AGREED", created, identity, `${formatUsd(snapshot.invoice.usdTarget)} milestone`),
+    receiptLifecycle("FUNDED", funded, identity, `${formatFxrp(fundedLock)} locked`),
+    receiptLifecycle("DELIVERED", evidence, identity, `Commitment ${shortenHex(snapshot.invoice.evidenceHash, 6, 5)}`),
+    receiptLifecycle("SETTLED", released, identity, `${formatFxrp(payout)} paid · ${formatFxrp(refund)} returned`),
   ] as const;
 
   return {
@@ -1017,16 +1018,16 @@ function statusCopy(
       nextStep: "Waiting for delivery evidence.",
     };
     case "SUBMITTED": return preview && BigInt(preview.topUp.atomic) > 0n ? {
-      summary: "Top-up required. The escrow no longer covers the milestone target; no payment has been released.",
+      summary: "The escrow no longer covers the milestone target. No payment has been released.",
       nextStep: "Waiting for the client to add the previewed FXRP shortfall.",
     } : {
       summary: "Delivery evidence submitted. FXRP remains locked while the client reviews it.",
       nextStep: "Waiting for the client’s decision.",
     };
     case "RELEASED": return {
-      summary: "Payment released. The release state and price are confirmed by the current contract record.",
+      summary: "The freelancer was paid and the unused FXRP returned to the client.",
       nextStep: hasReceiptLocator
-        ? "View the public receipt."
+        ? "View settlement receipt."
         : "Review the current contract state; no verified receipt locator is available for this invoice.",
     };
     case "CANCELLED": return {
@@ -1044,6 +1045,7 @@ function receiptLifecycle(
   stage: LifecycleStage,
   event: DecodedReceiptEvent,
   identity: DeploymentIdentity,
+  detail: string,
 ): ReceiptLifecycleView {
   return {
     stage,
@@ -1054,6 +1056,7 @@ function receiptLifecycle(
     blockNumber: event.blockNumber.toString(),
     blockTimestamp: timestamp(event.blockTimestamp),
     explorerUrl: explorerTransaction(identity, event.transactionHash),
+    detail,
   };
 }
 
@@ -1544,12 +1547,12 @@ async function getFixtureReceiptView(): Promise<ReceiptView> {
   const refund = BigInt(artifact.settlement.fxrpRefundedAtomic);
   assertSettlementConservation(locked, payout, refund);
   const stageData = [
-    ["AGREED", "InvoiceCreated", "create"],
-    ["FUNDED", "InvoiceFunded", "funding"],
-    ["DELIVERED", "EvidenceSubmitted", "evidence"],
-    ["SETTLED", "InvoiceReleased", "release"],
+    ["AGREED", "InvoiceCreated", "create", `${formatUsd(BigInt(artifact.invoice.usdTargetAtomic))} milestone`],
+    ["FUNDED", "InvoiceFunded", "funding", `${formatFxrp(locked)} locked`],
+    ["DELIVERED", "EvidenceSubmitted", "evidence", `Commitment ${shortenHex(artifact.invoice.evidenceHash, 6, 5)}`],
+    ["SETTLED", "InvoiceReleased", "release", `${formatFxrp(payout)} paid · ${formatFxrp(refund)} returned`],
   ] as const;
-  const lifecycle = stageData.map(([stage, eventName, key]) => ({
+  const lifecycle = stageData.map(([stage, eventName, key, detail]) => ({
     stage,
     reached: true as const,
     confirmed: true as const,
@@ -1558,6 +1561,7 @@ async function getFixtureReceiptView(): Promise<ReceiptView> {
     blockNumber: journal.transactions[key].blockNumber.toString(),
     blockTimestamp: timestamp(journal.transactions[key].blockTimestamp),
     explorerUrl: explorerTransaction(identity, pointers[key]),
+    detail,
   })) satisfies readonly ReceiptLifecycleView[];
   for (const key of Object.keys(pointers) as (keyof ReceiptPointers)[]) {
     if (pointers[key].toLowerCase() !== journal.transactions[key].transactionHash.toLowerCase()) {
