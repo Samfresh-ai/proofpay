@@ -2,10 +2,7 @@ import type { Metadata } from "next";
 
 import { EmptyDocument, SettlementReceipt } from "@/components/proofpay";
 import { getInvoiceView, getReceiptView, parseInvoiceId, ProofPayDataError } from "@/lib/proofpay";
-
-export const metadata: Metadata = {
-  title: "Settlement receipt",
-};
+import { PROOFPAY_PUBLIC_DESCRIPTION, PROOFPAY_PUBLIC_TITLE } from "@/lib/site-metadata";
 
 function normalizePositiveId(value: string): string | null {
   try {
@@ -13,6 +10,24 @@ function normalizePositiveId(value: string): string | null {
   } catch {
     return null;
   }
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id: rawId } = await params;
+  const id = normalizePositiveId(rawId) ?? encodeURIComponent(rawId);
+  const url = `/receipt/${id}`;
+  return {
+    title: "Settlement receipt",
+    description: PROOFPAY_PUBLIC_DESCRIPTION,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      siteName: "ProofPay",
+      title: PROOFPAY_PUBLIC_TITLE,
+      description: PROOFPAY_PUBLIC_DESCRIPTION,
+      url,
+    },
+  };
 }
 
 export default async function ReceiptPage({ params }: { params: Promise<{ id: string }> }) {

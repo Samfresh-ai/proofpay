@@ -2,10 +2,7 @@ import type { Metadata } from "next";
 
 import { EmptyDocument, MilestoneDocument } from "@/components/proofpay";
 import { getInvoiceView, getReceiptView, parseInvoiceId, ProofPayDataError } from "@/lib/proofpay";
-
-export const metadata: Metadata = {
-  title: "Milestone invoice",
-};
+import { PROOFPAY_PUBLIC_DESCRIPTION, PROOFPAY_PUBLIC_TITLE } from "@/lib/site-metadata";
 
 function normalizePositiveId(value: string): string | null {
   try {
@@ -13,6 +10,24 @@ function normalizePositiveId(value: string): string | null {
   } catch {
     return null;
   }
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id: rawId } = await params;
+  const id = normalizePositiveId(rawId) ?? encodeURIComponent(rawId);
+  const url = `/invoice/${id}`;
+  return {
+    title: "Milestone invoice",
+    description: PROOFPAY_PUBLIC_DESCRIPTION,
+    alternates: { canonical: url },
+    openGraph: {
+      type: "website",
+      siteName: "ProofPay",
+      title: PROOFPAY_PUBLIC_TITLE,
+      description: PROOFPAY_PUBLIC_DESCRIPTION,
+      url,
+    },
+  };
 }
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
