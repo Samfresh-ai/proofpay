@@ -7,17 +7,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint app components lib tests e2e scripts/reconcile-interface.ts *.config.ts --max-warnings=0",
+    "lint": "eslint app components lib tests e2e scripts/reconcile-interface.ts scripts/scan-browser-secrets.ts scripts/verify-browser-settlement.ts *.config.ts --max-warnings=0",
     "test:unit": "vitest run tests",
     "test:e2e": "playwright test",
     "test:e2e:live": "playwright test --config=playwright.live.config.ts",
+    "test:e2e:browser-live": "playwright test --config=playwright.browser-live.config.ts",
     "reconcile:interface:coston2": "tsx scripts/reconcile-interface.ts",
+    "scan:browser-secrets": "tsx scripts/scan-browser-secrets.ts",
     "deploy:coston2": "tsx scripts/deploy-coston2.ts",
     "live:coston2": "tsx scripts/run-live-invoice.ts",
     "probe:flare": "tsx scripts/probe-flare.ts",
     "probe:ftso-tolerance": "tsx scripts/sample-ftso-tolerance.ts",
     "typecheck": "tsc --noEmit",
-    "verify:live:coston2": "tsx scripts/verify-live-invoice.ts"
+    "verify:live:coston2": "tsx scripts/verify-live-invoice.ts",
+    "verify:browser-live:coston2": "tsx scripts/verify-browser-settlement.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",

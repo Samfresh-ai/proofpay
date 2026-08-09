@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "phase": "5B2",
+  "network": {
+    "name": "Flare Testnet Coston2",
+    "chainId": 114,
+    "testnet": true
+  },
+  "invoice": {
+    "invoiceId": "2",
+    "milestoneTitle": "Verify ProofPay wallet actions on Coston2",
+    "usdTargetAtomic": "2000000",
+    "freelancer": "0xB9CC4f51Bb837DC56998474961250287f40FA680",
+    "client": "0x3c47ddC46848A7a225d3491DA5c211e2E7A51F42",
+    "creationBlockNumber": "33804596",
+    "deliveryDeadline": "1786325880",
+    "scopeHash": "0x8b7690474f3fb8ffd5f96c15fd8e500aab3e11ea991f9dd5c1eefd0d5a220891",
+    "evidenceHash": "0xb98859ff3db3f2bb2f06bb2e8ef96f60bfa47432080fde6159476e2547ecacda",
+    "evidenceUri": "https://coston2-explorer.flare.network/tx/0x60aa661a4c755b807a1911cce513603f103912226570ab9d9fafaf272eb3d857"
+  },
+  "settlement": {
+    "fundingPrice": "1034376",
+    "fundingPriceDecimals": 6,
+    "fundingPriceTimestamp": "1786243496",
+    "releasePrice": "1034496",
+    "releasePriceDecimals": 6,
+    "releasePriceTimestamp": "1786243563",
+    "fxrpLockedAtomic": "2126887",
+    "fxrpPaidAtomic": "1933309",
+    "fxrpRefundedAtomic": "193578",
+    "topUpAtomic": "0",
+    "payoutPlusRefundEqualsPriorLock": true
+  },
+  "contract": {
+    "address": "0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21"
+  },
+  "transactions": {
+    "create": "0xe467d0a5205a4fbdd0ffbb2b8efc0d7cc41682c38245a07266125a59a9d36c7a",
+    "approval": "0x70f48a8ab45e54bcd85cbdfb90a9121147231fbef58f17a858df62afe728ecb0",
+    "approvalHistory": [
+      "0xd20702d104759670b06b3e8b0b48aa52c1259e08797c8d1f6ab1074a336f4c11",
+      "0xf843a43e19f1a899874095e5bcecb4dfcc64a3f6f69ac739c7a290ea14dfde43",
+      "0x601fd5134b75b8a94d4353e6765ccb95e1b2d0ea6e65e5fd121da0adf6596c9c"
+    ],
+    "funding": "0x60aa661a4c755b807a1911cce513603f103912226570ab9d9fafaf272eb3d857",
+    "evidence": "0x91c0336de07ff5741c9f6d8e380d65e80d367c496da7abdae3d1373a6a6ec281",
+    "topUpApproval": null,
+    "topUp": null,
+    "release": "0x6e1b8c009e9021aa05d5aeabaf1e7effcbf0b15402ef7a4b153bfcf26a82d921"
+  },
+  "balances": {
+    "initial": {
+      "blockNumber": "33804514",
+      "blockTimestamp": "1786242821",
+      "clientC2flrWei": "97347328850000000000",
+      "clientC2flr": "97.34732885",
+      "freelancerC2flrWei": "868225500000000000",
+      "freelancerC2flr": "0.8682255",
+      "clientFxrpAtomic": "5180252",
+      "clientFxrp": "5.180252",
+      "freelancerFxrpAtomic": "4819748",
+      "freelancerFxrp": "4.819748",
+      "contractFxrpAtomic": "0",
+      "contractFxrp": "0",
+      "activeFxrpLiabilitiesAtomic": "0",
+      "invoice": null
+    },
+    "final": {
+      "blockNumber": "33805116",
+      "blockTimestamp": "1786244170",
+      "clientC2flrWei": "96832563300000000000",
+      "clientC2flr": "96.8325633",
+      "freelancerC2flrWei": "736049300000000000",
+      "freelancerC2flr": "0.7360493",
+      "clientFxrpAtomic": "3246943",
+      "clientFxrp": "3.246943",
+      "freelancerFxrpAtomic": "6753057",
+      "freelancerFxrp": "6.753057",
+      "contractFxrpAtomic": "0",
+      "contractFxrp": "0",
+      "activeFxrpLiabilitiesAtomic": "0",
+      "invoice": {
+        "freelancer": "0xB9CC4f51Bb837DC56998474961250287f40FA680",
+        "client": "0x3c47ddC46848A7a225d3491DA5c211e2E7A51F42",
+        "usdTargetAtomic": "2000000",
+        "fxrpLockedAtomic": "2126887",
+        "deliveryDeadline": "1786325880",
+        "scopeHash": "0x8b7690474f3fb8ffd5f96c15fd8e500aab3e11ea991f9dd5c1eefd0d5a220891",
+        "evidenceHash": "0xb98859ff3db3f2bb2f06bb2e8ef96f60bfa47432080fde6159476e2547ecacda",
+        "fundingPrice": "1034376",
+        "fundingPriceDecimals": 6,
+        "fundingPriceTimestamp": "1786243496",
+        "releasePrice": "1034496",
+        "releasePriceDecimals": 6,
+        "releasePriceTimestamp": "1786243563",
+        "status": 3,
+        "statusName": "RELEASED"
+      }
+    }
+  },
+  "final": {
+    "invoiceState": "RELEASED",
+    "activeFxrpLiabilitiesAtomic": "0",
+    "contractFxrpBalanceAtomic": "0"
+  },
+  "manifests": {
+    "scope": {
+      "path": "artifacts/browser-scope-manifest.json",
+      "keccak256": "0x8b7690474f3fb8ffd5f96c15fd8e500aab3e11ea991f9dd5c1eefd0d5a220891"
+    },
+    "evidence": {
+      "path": "artifacts/browser-evidence-manifest.json",
+      "keccak256": "0xb98859ff3db3f2bb2f06bb2e8ef96f60bfa47432080fde6159476e2547ecacda",
+      "evidenceUri": "https://coston2-explorer.flare.network/tx/0x60aa661a4c755b807a1911cce513603f103912226570ab9d9fafaf272eb3d857"
+    }
+  },
+  "executionGitCommit": "b61c6bc920015cc52f09b265620cebae44a1e5b0"
+}

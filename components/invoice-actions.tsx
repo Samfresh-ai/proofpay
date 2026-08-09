@@ -78,7 +78,7 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
   const [fundingPreview, setFundingPreview] = useState<FundingPreview | null>(null);
   const [releaseQuote, setReleaseQuote] = useState<ReleaseQuote | null>(null);
   const [evidenceUrls, setEvidenceUrls] = useState("");
-  const [gitCommit, setGitCommit] = useState("");
+  const [walletActionsCommit, setWalletActionsCommit] = useState("");
   const [completionNote, setCompletionNote] = useState("");
   const [prepared, setPrepared] = useState<PreparedAction | null>(null);
   const [preparing, setPreparing] = useState(false);
@@ -210,10 +210,21 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
     setPreparing(true);
     try {
       const { account, client } = assertReady("submit_evidence");
+      const confirmedHash = (action: "create" | "approve" | "fund") => [...journal.entries]
+        .reverse()
+        .find((entry) => entry.invoiceId === invoice.id && entry.action === action && entry.status === "confirmed")
+        ?.transactionHash ?? undefined;
+      const createTransaction = confirmedHash("create");
+      const approvalTransaction = confirmedHash("approve");
+      const fundingTransaction = confirmedHash("fund");
       const manifest = buildEvidenceManifest({
         deliveryUrls: evidenceUrls.split("\n").filter((value) => value.trim()),
         completionNote,
-        ...(gitCommit.trim() ? { gitCommit } : {}),
+        milestoneTitle: invoice.title,
+        ...(createTransaction ? { createTransaction } : {}),
+        ...(approvalTransaction ? { approvalTransaction } : {}),
+        ...(fundingTransaction ? { fundingTransaction } : {}),
+        ...(walletActionsCommit.trim() ? { walletActionsCommit } : {}),
       });
       const simulation = await client.simulateContract({
         account,
@@ -497,8 +508,8 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
                 <textarea onChange={(event) => setEvidenceUrls(event.target.value)} rows={4} value={evidenceUrls} />
               </label>
               <label>
-                <span>Git commit · optional</span>
-                <input className="mono-input" onChange={(event) => setGitCommit(event.target.value)} value={gitCommit} />
+                <span>Wallet-actions commit · optional</span>
+                <input className="mono-input" onChange={(event) => setWalletActionsCommit(event.target.value)} value={walletActionsCommit} />
               </label>
               <label>
                 <span>Completion note</span>

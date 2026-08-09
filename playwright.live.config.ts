@@ -30,7 +30,7 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: `npm run dev -- --hostname ${host} --port ${port}`,
+    command: `/home/samfresh22/.nvm/versions/node/v22.21.1/bin/npm run dev -- --hostname ${host} --port ${port}`,
     url: `${baseURL}/invoice/1`,
     timeout: 360_000,
     reuseExistingServer: false,

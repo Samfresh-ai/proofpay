@@ -263,7 +263,7 @@ test("freelancer evidence and cancellation prepare only their exact contract act
   await open(page, "/invoice/4");
   await connect(page);
   await page.getByLabel("Public delivery URLs · one per line").fill("https://example.com/delivery?b=2&a=1");
-  await page.getByLabel("Git commit · optional").fill("abcdef1");
+  await page.getByLabel("Wallet-actions commit · optional").fill("abcdef1");
   await page.getByLabel("Completion note").fill("Acceptance tests passed.");
   await page.getByRole("button", { name: "Hash and simulate evidence submission" }).click();
   await expectPrepared(page, /Submit this evidence commitment/u);

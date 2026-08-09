@@ -14,15 +14,23 @@ export interface CanonicalManifest<T> {
 
 export interface EvidenceManifestInput {
   deliveryUrls: readonly string[];
-  gitCommit?: string;
+  milestoneTitle?: string;
+  createTransaction?: string;
+  approvalTransaction?: string;
+  fundingTransaction?: string;
+  walletActionsCommit?: string;
   completionNote: string;
 }
 
 export interface EvidenceManifest {
+  approvalTransaction: Hash | null;
   completionNote: string;
+  createTransaction: Hash | null;
   deliveryUrls: readonly string[];
-  gitCommit: string | null;
+  fundingTransaction: Hash | null;
+  milestoneTitle: string | null;
   schemaVersion: 1;
+  walletActionsCommit: string | null;
 }
 
 export interface ScopeManifestInput {
@@ -133,15 +141,28 @@ export function buildEvidenceManifest(
   if (deliveryUrls.length === 0) throw new Error("Add at least one public delivery URL.");
   if (deliveryUrls.length > 8) throw new Error("Use no more than eight delivery URLs.");
 
-  const commit = input.gitCommit?.trim() || null;
+  const commit = input.walletActionsCommit?.trim() || null;
   if (commit !== null && !/^[0-9a-f]{7,64}$/iu.test(commit)) {
-    throw new Error("Git commit must contain 7 to 64 hexadecimal characters.");
+    throw new Error("Wallet-actions commit must contain 7 to 64 hexadecimal characters.");
   }
+  const transaction = (candidate: string | undefined, label: string): Hash | null => {
+    const normalized = candidate?.trim() || null;
+    if (normalized !== null && !/^0x[0-9a-f]{64}$/iu.test(normalized)) {
+      throw new Error(`${label} must be a 32-byte transaction hash.`);
+    }
+    return normalized?.toLowerCase() as Hash | null;
+  };
   const value: EvidenceManifest = {
+    approvalTransaction: transaction(input.approvalTransaction, "Approval transaction"),
     completionNote: normalizeText(input.completionNote, "Completion note", 280),
+    createTransaction: transaction(input.createTransaction, "Create transaction"),
     deliveryUrls,
-    gitCommit: commit?.toLowerCase() ?? null,
+    fundingTransaction: transaction(input.fundingTransaction, "Funding transaction"),
+    milestoneTitle: input.milestoneTitle
+      ? normalizeText(input.milestoneTitle, "Milestone title", 120)
+      : null,
     schemaVersion: 1,
+    walletActionsCommit: commit?.toLowerCase() ?? null,
   };
   const committed = commitManifest(value);
   const primaryEvidenceUri = deliveryUrls[0];

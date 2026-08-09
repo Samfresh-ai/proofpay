@@ -778,3 +778,51 @@ Gate: `PASS`
 
 - Commit subject on PASS: `feat: add ProofPay wallet actions`.
 - Next decision: `READY FOR LIVE BROWSER SETTLEMENT`.
+
+## Phase 5B2 — live browser settlement
+
+Gate: `PASS` with one nonblocking delivery-window limitation.
+
+### Live result
+
+- Invoice `2`, target `$2.00`, was created through `/app` by the freelancer and then approved,
+  funded, submitted, and released through `/invoice/2` by the correct browser-connected parties.
+- The Node-only Playwright EIP-1193 bridge used the existing owner-only burner wallets. Private keys
+  did not enter the page, application source, Playwright configuration, traces, screenshots,
+  artifacts, logs, or git.
+- Confirmed lifecycle transactions are create `0xe467…36c7a`, fund `0x60aa…d857`, evidence
+  `0x91c0…c281`, and release `0x6e1b…d921`. Four exact approval prompts were required as the live
+  quote moved; all four transactions are preserved and each broadcast count is one.
+- Funding locked `2.126887 FXRP`. Release paid `1.933309 FXRP` and refunded `0.193578 FXRP` with no
+  top-up. Invoice state is `RELEASED`; liabilities and contract FXRP balance are zero; final client
+  and freelancer balances are `3.246943` and `6.753057 FXRP`.
+- `/receipt/2` displayed the reconciled result from the preserved browser locator. The separate
+  read-only verifier passed at block `33804870`, and the later replay run changed no broadcast count.
+
+### Validation
+
+- `npm run test:unit`: 30 passed.
+- `npm run test:e2e`: 10 passed with one worker.
+- `npm run test:e2e:browser-live`: live settlement passed, then the completed-journal replay passed
+  without a new transaction.
+- `npm run verify:browser-live:coston2`: passed exact manifests, lifecycle receipts, senders,
+  destinations, state, conservation, zero liabilities, and party balances.
+- `npm run lint`, `npm run typecheck`, and `npm run build`: passed.
+- Ten required screenshots exist under `artifacts/browser-settlement/`; action and receipt Axe scans
+  found no serious/critical issue, and both mobile states had no horizontal overflow.
+
+### Observed limitations
+
+- Four exact approvals were required because a fresh 2%-tolerance maximum increased by small atomic
+  amounts while the live quote moved. Confirmed approvals no longer block a necessary refreshed
+  exact approval; prepared, wallet-open, and submitted approvals still block duplicates.
+- The `datetime-local` field produced an `82,853`-second confirmed delivery window because of local
+  timezone interpretation, not exactly 24 hours. This settled invoice cannot be amended.
+- Restored injected-wallet state produced a React hydration warning in development before client
+  rendering recovered. This was nonblocking but remains interface-refinement work.
+- The automated run is execution evidence, not human usability validation or production readiness.
+
+### Phase completion
+
+- Commit subject on PASS: `proof: settle ProofPay invoice through browser`.
+- Next decision: `READY FOR INTERFACE REFINEMENT`.

@@ -131,12 +131,12 @@ describe("ProofPay Phase 5B1 amounts, manifests, and copy", () => {
   it("canonicalizes evidence and scope deterministically before hashing", () => {
     const first = buildEvidenceManifest({
       deliveryUrls: ["https://example.com/delivery/?b=2&a=1#result", "https://example.org/proof"],
-      gitCommit: "ABCDEF1",
+      walletActionsCommit: "ABCDEF1",
       completionNote: "  Acceptance tests passed.  ",
     });
     const second = buildEvidenceManifest({
       deliveryUrls: ["https://example.org/proof", "https://example.com/delivery?a=1&b=2"],
-      gitCommit: "abcdef1",
+      walletActionsCommit: "abcdef1",
       completionNote: "Acceptance tests passed.",
     });
     expect(first.hash).toBe(second.hash);
@@ -208,6 +208,22 @@ describe("ProofPay Phase 5B1 browser-local journal", () => {
     expect(calls).toBe(1);
     expect(confirmed[0]).toMatchObject({ status: "confirmed", transactionHash: TX_HASH });
     expect(findBlockingJournalEntry(confirmed, { account: CLIENT, invoiceId: "3", action: "fund" })).not.toBeNull();
+  });
+
+  it("allows a fresh exact approval after an earlier approval confirmed", () => {
+    const approval = journalEntryFromIntent(buildApprovalIntent({
+      account: CLIENT,
+      invoiceId: 3n,
+      maximumFxrp: 5_610_000n,
+    }));
+    const confirmed = transitionJournalEntry([approval], approval.intentHash, "confirmed", {
+      transactionHash: TX_HASH,
+    });
+    expect(findBlockingJournalEntry(confirmed, { account: CLIENT, invoiceId: "3", action: "approve" })).toBeNull();
+    const submitted = transitionJournalEntry([approval], approval.intentHash, "submitted", {
+      transactionHash: TX_HASH,
+    });
+    expect(findBlockingJournalEntry(submitted, { account: CLIENT, invoiceId: "3", action: "approve" })).not.toBeNull();
   });
 
   it("drops malformed and cross-contract journal records", () => {

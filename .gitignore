@@ -13,3 +13,4 @@ artifacts/*.local.json
 *.tsbuildinfo
 artifacts/interface/test-results/
 artifacts/interface/live-test-results/
+artifacts/browser-settlement/test-results/

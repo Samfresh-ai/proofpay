@@ -240,15 +240,17 @@ prepared. Funding must be quoted and simulated again after approval.
 
 Evidence uses sorted canonical UTF-8 JSON. Public HTTP(S) delivery URLs are normalized, sorted,
 deduplicated, stripped of fragments, and rejected when they contain credentials or local/private
-hosts. Optional commit and completion note fields enter the same manifest. The displayed
+hosts. Optional browser transaction references, wallet-actions commit, milestone title, and
+completion note enter the same manifest. The displayed
 `keccak256` commitment proves the submitted bytes only, not delivery truth or quality.
 
 The browser-local transaction journal records prepared, awaiting-wallet, submitted, confirmed,
 reverted, or abandoned status. It stores action identity and public transaction metadata only. A
 stale awaiting-wallet entry returns to prepared after reload; submitted hashes reconcile through
-their receipts. Prepared, submitted, and confirmed entries block duplicate preparation until the
-authoritative invoice state changes. This journal is not an indexer, account, database, or
-cross-device history.
+their receipts. Prepared and submitted entries block duplicates. Confirmed state-changing actions
+remain blocked until authoritative invoice state changes, while a confirmed approval may be
+replaced by a newly simulated exact approval when a moving quote makes the prior allowance too
+small. This journal is not an indexer, account, database, or cross-device history.
 
 All Phase 5B1 browser signing tests use a deterministic injected EIP-1193 provider. They do not
 contact the public Coston2 RPC and cannot broadcast a live transaction. Therefore Phase 5B1 proves
@@ -260,3 +262,28 @@ tests, the production build, lint, typecheck, live settlement reconciliation, ex
 dependency audit, protected-file comparison, and `git diff --check`. The action browser tests cover
 serious/critical Axe results, visible keyboard focus, and 390-pixel overflow. No real Coston2 wallet
 transaction was sent.
+
+## Phase 5B2 observed live behavior
+
+The Phase 5B2 harness injects a temporary EIP-1193 provider through Playwright. Its signer and
+private keys remain in the Node test process; no signer bridge exists in production application
+code. Before each browser click, the harness preserves the visible intent and a pinned balance/state
+snapshot. It then permits one broadcast, records the returned hash immediately, waits for the
+receipt, and preserves the post-state. A completed journal skips all write actions on replay.
+
+Invoice `2` exercised the live `CREATED → FUNDED → SUBMITTED → RELEASED` path. The funding preview
+showed the base conversion, 10% protection, 2% maximum, allowance, price time, and quote deadline.
+Four successive exact approvals were required because each refreshed live quote briefly exceeded
+the prior allowance by a small atomic amount. The final funding lock was `2.126887 FXRP`. The
+release preview required no top-up and resolved to `1.933309 FXRP` payout plus `0.193578 FXRP`
+refund. The terminal page removed action controls, and `/receipt/2` displayed the decoded result.
+
+The browser run recorded zero network switches, six quote refreshes, eight wallet prompts, four
+approval prompts, zero rejected or duplicate actions, and one reload reconciliation. Action and
+receipt Axe scans had no serious/critical results, and 390-pixel invoice and receipt pages did not
+overflow horizontally. This is automated evidence, not human usability validation.
+
+Two issues are preserved for refinement: `datetime-local` timezone interpretation produced an
+`82,853`-second confirmed delivery window instead of exactly `86,400`, and restored injected-wallet
+state emitted a development hydration warning before client rendering recovered. Neither value is
+hidden or generalized into a production-readiness claim.

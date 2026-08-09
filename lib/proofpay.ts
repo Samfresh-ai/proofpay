@@ -17,9 +17,13 @@ import {
 
 const DEPLOYMENT_PATH = resolve(process.cwd(), "deployment", "coston2.json");
 const RECEIPT_POINTER_PATH = resolve(process.cwd(), "artifacts", "coston2-settlement-receipt.json");
+const BROWSER_RECEIPT_POINTER_PATH = resolve(process.cwd(), "artifacts", "coston2-browser-settlement-receipt.json");
+const BROWSER_JOURNAL_PATH = resolve(process.cwd(), "artifacts", "coston2-browser-invoice.json");
 const LIVE_JOURNAL_PATH = resolve(process.cwd(), "artifacts", "coston2-live-invoice.json");
 const SCOPE_MANIFEST_PATH = resolve(process.cwd(), "artifacts", "live-scope-manifest.json");
 const EVIDENCE_MANIFEST_PATH = resolve(process.cwd(), "artifacts", "live-evidence-manifest.json");
+const BROWSER_SCOPE_MANIFEST_PATH = resolve(process.cwd(), "artifacts", "browser-scope-manifest.json");
+const BROWSER_EVIDENCE_MANIFEST_PATH = resolve(process.cwd(), "artifacts", "browser-evidence-manifest.json");
 
 const EXPECTED_CHAIN_ID = 114;
 const EXPECTED_RECEIPT_ID = 1n;
@@ -360,11 +364,12 @@ export async function getInvoiceView(value: string | number | bigint): Promise<I
 
 export async function getReceiptView(value: string | number | bigint): Promise<ReceiptView | null> {
   const invoiceId = parseInvoiceId(value);
-  if (invoiceId !== EXPECTED_RECEIPT_ID) return null;
   const mode = resolveDataMode();
-  if (mode === "fixture") return await getFixtureReceiptView();
+  if (mode === "fixture") return invoiceId === EXPECTED_RECEIPT_ID ? await getFixtureReceiptView() : null;
 
   try {
+    const identity = await getDeploymentIdentity();
+    if (!await hasVerifiedReceiptLocator(identity, invoiceId)) return null;
     return await getLiveReceiptView(invoiceId);
   } catch (error) {
     if (error instanceof ProofPayDataError) throw error;
@@ -577,11 +582,18 @@ async function buildInvoiceView(
 
   const status = invoiceStatuses[snapshot.invoice.status];
   if (status === undefined) contradiction(`Invoice ${invoiceId} returned an unsupported status.`);
-  const scope = invoiceId === EXPECTED_RECEIPT_ID
-    ? await loadScopeManifest(snapshot.invoice.scopeHash, identity, snapshot.invoice)
+  const browserInvoice = await isBrowserSettlementInvoice(invoiceId);
+  const scopePath = invoiceId === EXPECTED_RECEIPT_ID
+    ? SCOPE_MANIFEST_PATH
+    : browserInvoice ? BROWSER_SCOPE_MANIFEST_PATH : null;
+  const evidencePath = invoiceId === EXPECTED_RECEIPT_ID
+    ? EVIDENCE_MANIFEST_PATH
+    : browserInvoice ? BROWSER_EVIDENCE_MANIFEST_PATH : null;
+  const scope = scopePath
+    ? await loadScopeManifest(scopePath, snapshot.invoice.scopeHash, identity, snapshot.invoice)
     : undefined;
-  const evidence = invoiceId === EXPECTED_RECEIPT_ID && snapshot.invoice.evidenceHash !== ZERO_HASH
-    ? await loadEvidenceManifest(snapshot.invoice.evidenceHash, identity)
+  const evidence = evidencePath && snapshot.invoice.evidenceHash !== ZERO_HASH
+    ? await loadEvidenceManifest(evidencePath, snapshot.invoice.evidenceHash, identity, browserInvoice)
     : undefined;
   const copy = statusCopy(status, preview, receiptLocatorAvailable);
   const view: InvoiceView = {
@@ -847,7 +859,8 @@ async function readReceiptPointers(
   identity: DeploymentIdentity,
   invoiceId: bigint,
 ): Promise<ReceiptPointers> {
-  const parsed = await readJsonObject(RECEIPT_POINTER_PATH, "settlement receipt pointer file");
+  const path = invoiceId === EXPECTED_RECEIPT_ID ? RECEIPT_POINTER_PATH : BROWSER_RECEIPT_POINTER_PATH;
+  const parsed = await readJsonObject(path, "settlement receipt pointer file");
   return parseReceiptPointers(parsed, identity.chainId, identity.contractAddress, invoiceId);
 }
 
@@ -883,7 +896,6 @@ function parseReceiptPointers(
 }
 
 async function hasVerifiedReceiptLocator(identity: DeploymentIdentity, invoiceId: bigint): Promise<boolean> {
-  if (invoiceId !== EXPECTED_RECEIPT_ID) return false;
   try {
     await readReceiptPointers(identity, invoiceId);
     return true;
@@ -894,11 +906,12 @@ async function hasVerifiedReceiptLocator(identity: DeploymentIdentity, invoiceId
 }
 
 async function loadScopeManifest(
+  path: string,
   expectedHash: Hash,
   identity: DeploymentIdentity,
   invoice: RawInvoice,
 ): Promise<VerifiedScopeManifest> {
-  const parsed = await readHashVerifiedJson(SCOPE_MANIFEST_PATH, expectedHash, "scope manifest");
+  const parsed = await readHashVerifiedJson(path, expectedHash, "scope manifest");
   assertAddress(parsed.contractAddress, identity.contractAddress, "scope manifest contract");
   assertAddress(parsed.client, invoice.client, "scope manifest client");
   assertAddress(parsed.freelancer, invoice.freelancer, "scope manifest freelancer");
@@ -913,15 +926,36 @@ async function loadScopeManifest(
 }
 
 async function loadEvidenceManifest(
+  path: string,
   expectedHash: Hash,
   identity: DeploymentIdentity,
+  browserInvoice = false,
 ): Promise<VerifiedEvidenceManifest> {
-  const parsed = await readHashVerifiedJson(EVIDENCE_MANIFEST_PATH, expectedHash, "evidence manifest");
-  assertAddress(parsed.deployedContractAddress, identity.contractAddress, "evidence manifest contract");
+  const parsed = await readHashVerifiedJson(path, expectedHash, "evidence manifest");
+  if (!browserInvoice) assertAddress(parsed.deployedContractAddress, identity.contractAddress, "evidence manifest contract");
   return {
     milestoneTitle: stringField(parsed, "milestoneTitle", "evidence manifest"),
     completionNote: stringField(parsed, "completionNote", "evidence manifest"),
   };
+}
+
+async function isBrowserSettlementInvoice(invoiceId: bigint): Promise<boolean> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(BROWSER_JOURNAL_PATH, "utf8"));
+  } catch (error) {
+    if (isObject(error) && error.code === "ENOENT") return false;
+    throw new ProofPayDataError("INVALID_LOCAL_EVIDENCE", "Browser settlement journal could not be parsed.");
+  }
+  if (!isObject(parsed)) {
+    throw new ProofPayDataError("INVALID_LOCAL_EVIDENCE", "Browser settlement journal is not an object.");
+  }
+  const value = parsed.invoiceId;
+  if (value === null) return false;
+  if (typeof value !== "string" || !/^[1-9][0-9]*$/u.test(value)) {
+    throw new ProofPayDataError("INVALID_LOCAL_EVIDENCE", "Browser settlement journal invoice ID is invalid.");
+  }
+  return BigInt(value) === invoiceId;
 }
 
 async function readHashVerifiedJson(path: string, expectedHash: Hash, label: string): Promise<Record<string, unknown>> {

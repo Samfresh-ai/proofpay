@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "phase": "5B2",
+  "status": "PASS",
+  "verifiedAt": "2026-08-09T03:03:46.477Z",
+  "chainId": 114,
+  "invoiceId": "2",
+  "pinnedBlock": "33805289",
+  "checks": {
+    "browserJournalTransactionsConfirmedExactlyOnce": true,
+    "canonicalManifestHashesMatch": true,
+    "lifecycleReceiptsMatch": true,
+    "onchainInvoiceMatches": true,
+    "payoutPlusRefundEqualsPriorLock": true,
+    "liabilitiesAndContractBalanceZero": true,
+    "partyBalancesMatch": true
+  }
+}

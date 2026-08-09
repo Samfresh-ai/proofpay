@@ -172,7 +172,11 @@ export function findBlockingJournalEntry(
     action: ProofPayTransactionAction;
   },
 ): JournalEntry | null {
-  const blocked = new Set<JournalStatus>(["prepared", "awaiting_wallet", "submitted", "confirmed"]);
+  const blocked = new Set<JournalStatus>(
+    input.action === "approve"
+      ? ["prepared", "awaiting_wallet", "submitted"]
+      : ["prepared", "awaiting_wallet", "submitted", "confirmed"],
+  );
   return entries.find((entry) => (
     entry.chainId === PROOFPAY_CHAIN_ID
     && entry.contract.toLowerCase() === PROOFPAY_CONTRACT_ADDRESS.toLowerCase()
