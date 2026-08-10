@@ -1,14 +1,17 @@
 # ProofPay durable status
 
-Updated: 2026-08-09
+Updated: 2026-08-10
 
 ## Current state
 
-- Active phase: Phase 0 through Phase 5D complete.
-- Overall decision: `READY_FOR_PHASE_6A`. Phase 5D proved that one confirmed top-up does not block a
-  distinct later quote while exact-intent replay, unresolved-submission blocking, and every
-  one-time action protection remain intact. Phase 6A still requires its own explicit authorization;
-  no public deployment occurred here.
+- Active phase: Phase 0 through Phase 5D complete; Phase 6A public deployment is live, with one
+  explicit hosted funding-flow evidence gap.
+- Overall decision: `PUBLIC_DEPLOYMENT_NEEDS_REVISION`. Application commit
+  `903c36bf8d0bf172c1aaf113b46db375c4e210c7` is deployed as Vercel deployment
+  `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9` at `https://proofpay.paysmat.xyz`. DNS, HTTPS, anonymous
+  routes, production smoke, logs, and both read-only invoice reconciliations pass. The requested
+  hosted client funding-role quote and funding-intent screenshot remain impossible to prove from
+  the two terminal invoices without a prohibited broadcast.
 - Application UI: `/app`, `/invoice/[id]`, and `/receipt/[id]` provide role-aware wallet action
   preparation and verified read-only settlement records. Phase 5D changes only browser journal and
   action policy plus the failing transaction-button hover contrast; it adds no contract, backend,
@@ -965,3 +968,98 @@ Gate: `PASS`
   and live evidence remain preserved.
 - Commit subject on PASS: `fix: support repeated ProofPay top-ups`.
 - Next decision: `READY FOR PHASE 6A`.
+
+## Phase 6A — public web deployment
+
+Gate: `PUBLIC_DEPLOYMENT_NEEDS_REVISION`
+
+### Committed deployment baseline
+
+- Application commit `903c36bf8d0bf172c1aaf113b46db375c4e210c7` adds only the public-deployment
+  preparation: `/` redirects to `/app`; canonical and Open Graph origins resolve from
+  `NEXT_PUBLIC_SITE_URL` in Production and `VERCEL_URL` in Preview; the Coston2/test-assets/
+  non-audit/non-legal-or-fiat-escrow notice remains persistent; and `.vercelignore` constrains the
+  upload while preserving the committed deployment and receipt records required at runtime.
+- Local lint, typecheck, 62 unit tests, 16 simulated browser tests, the production hydration test,
+  production build, three live read-only browser checks, both invoice reconciliations, secret
+  scanning, upload-scope inspection, protected-evidence checks, and `git diff --check` passed before
+  deployment. Historical invoice, receipt, manifest, contract, and Coston2 deployment bytes were
+  unchanged.
+- This commit proves a deployment-ready source baseline. It does not by itself prove hosting, DNS,
+  TLS, anonymous access, or custom-domain availability.
+
+### Provider-hosted deployment evidence
+
+- Vercel project `proofpay-paysmat` produced Preview deployment
+  `dpl_28ihjc2manYnfZrydwyhDNDBnnAk` at
+  `https://proofpay-paysmat-l2nkco16r-adamolekuntemitope4-2758s-projects.vercel.app` and corrected
+  staged Production deployment `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9` at
+  `https://proofpay-paysmat-6rkpku49p-adamolekuntemitope4-2758s-projects.vercel.app`; both reached
+  Vercel state `READY`. The staged build exposes `https://proofpay.paysmat.xyz` canonical metadata.
+- The Preview was created from precursor commit `326e827fb06b68028ea4f05091fce89d6d1aef3d`.
+  Application commit `903c36b` changes only a metadata test fixture excluded from Vercel uploads;
+  the Preview runtime payload is unchanged.
+- Earlier staged deployment `dpl_F1wvviZF1tLe75yMHmkF4Ho8Rqfz` is retained only as correction
+  history because it compiled the owner's corrected-away `.com` origin. It must not be promoted;
+  no DNS record or public alias was created for that mistaken host.
+- Because generated deployment URLs are protected, their browser checks used Vercel's automation
+  bypass. Required application, invoice, receipt, and unknown-ID routes returned without browser,
+  page, or HTTP failures; current values for invoices `1` and `2` reconciled; desktop and 390-pixel
+  mobile views had no horizontal overflow; and sampled Axe scans had no serious or critical
+  finding. These checks do not prove anonymous custom-domain access.
+- An injected test provider connected on chain `114`, displayed the public account, prepared and
+  simulated a fresh `createInvoice` intent, and then abandoned the unsigned journal entry. It made
+  zero signature and transaction-send calls and produced no chain state change.
+
+### Anonymous production evidence
+
+- Vercel promoted corrected deployment `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9` without rebuilding.
+  Promotion status maps project `proofpay-paysmat` to that exact deployment.
+- Cloudflare serves the exact project-specific CNAME DNS-only. Both authorities and public
+  resolvers agree; Vercel reports `verified: true`, `misconfigured: false`, and zero conflicts.
+- HTTPS first passed at `2026-08-10T03:09:02Z`. The Let's Encrypt certificate identifies
+  `proofpay.paysmat.xyz`; plain HTTP redirects with `308`, and `/app` returns `200` with HSTS.
+- An anonymous, no-bypass browser run covered `/`, `/app`, both invoices and receipts, and both
+  unknown-ID states. Exact `.xyz` canonicals, current values, desktop/mobile overflow, sampled Axe
+  serious/critical findings, console errors, page errors, and failed browser responses all passed.
+- Seven visually reviewed production screenshots are preserved under
+  `artifacts/public-deployment/production/`. The wallet capture is explicitly an unsigned
+  create-invoice intent, not a funding-intent substitute.
+- Post-deployment read-only reconciliation pinned invoice `1` at block `33845120` and invoice `2`
+  at block `33845158`. Both remain `RELEASED` with zero liabilities and zero contract balance; all
+  seven invoice-2 verifier checks pass and protected artifact bytes are unchanged.
+- Vercel logs for the bounded public-smoke interval contain zero application error/fatal entries
+  and zero HTTP 5xx entries; the sampled request set contains only the corrected host and includes
+  the expected public routes.
+- Public Copy/Reveal and explorer-link checks pass without opening explorer destinations. Twelve
+  sensitive paths are non-public, and 18 same-origin assets contain no local-path, owner-name,
+  credential, private-key, or explicit source-map marker; no guessed source-map companion is
+  publicly readable.
+
+### Public wallet-action boundary
+
+- The hosted evidence proves injected-wallet discovery, Coston2 recognition, and unsigned
+  `createInvoice` intent preparation only. It does not prove a mined creation or the hosted client
+  funding path.
+- A read-only contract inventory at Coston2 block `33843618` found only invoices `1` and `2`, both
+  terminal `RELEASED`. Terminal invoice pages cannot expose a current client/freelancer funding
+  action or `quoteFunding` intent. Creating the non-terminal invoice needed for that exact hosted
+  proof would require a prohibited broadcast. Deterministic tests cover the role and quote policy,
+  but they are not public-host evidence and are not labelled as such.
+
+### Custom-domain and completion boundary
+
+- The owner corrected the intended host to `proofpay.paysmat.xyz`. Vercel's mistaken unverified
+  `.com` entry was detached, the corrected domain is attached and verified, and its exact
+  project-specific CNAME is `ac2b1f40626610de.vercel-dns-017.com.`. No verification TXT is required.
+- Cloudflare is authoritative for `paysmat.xyz` through `braden.ns.cloudflare.com` and
+  `heather.ns.cloudflare.com`. Both authorities returned `NXDOMAIN` for the `proofpay` A, AAAA,
+  CNAME, and TXT lookups before mutation, so no target-host conflict exists. The preserved
+  Cloudflare session added only the exact project-specific `proofpay` CNAME with proxying disabled
+  (`DNS only`) and TTL `Auto`. Both authorities and public resolvers return that target, while
+  Vercel reports the domain verified and correctly configured. No verification TXT was required.
+- The promoted deployment and exact DNS evidence are recorded in `deployment/vercel.json` and
+  `docs/DEPLOYMENT.md`. No root, `www`, mail, nameserver, or unrelated TXT record changed.
+- The custom domain, HTTPS, anonymous public checks, and read-only reconciliation all pass. Phase
+  6A still cannot receive the requested full PASS because the hosted role-aware funding quote and
+  funding-intent screenshot remain an explicit evidence gap under the no-broadcast rule.
