@@ -5,21 +5,23 @@ Updated: 2026-08-10
 ## Current state
 
 - Active phase: Phase 0 through Phase 5D complete; Phase 6A public deployment is live with one
-  explicit hosted funding-flow evidence gap; Phase 6B1 Signal Ledger implementation and local
-  validation are complete, with its one non-production Preview still pending.
-- Overall decision: `PHASE_6B1_LOCAL_VALIDATION_PASS_PREVIEW_PENDING`. The Phase 6A historical gate remains
+  explicit hosted funding-flow evidence gap; Phase 6B1 Signal Ledger implementation, local
+  validation, and its single protected non-production Preview are complete.
+- Overall decision: `PHASE_6B1_PASS`. The Phase 6A historical gate remains
   `PUBLIC_DEPLOYMENT_NEEDS_REVISION`. Application commit
   `903c36bf8d0bf172c1aaf113b46db375c4e210c7` is deployed as Vercel deployment
   `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9` at `https://proofpay.paysmat.xyz`. DNS, HTTPS, anonymous
   routes, production smoke, logs, and both read-only invoice reconciliations pass. The requested
   hosted client funding-role quote and funding-intent screenshot remain impossible to prove from
-  the two terminal invoices without a prohibited broadcast. Phase 6B1 has not changed that
-  production deployment or canonical domain.
+  the two terminal invoices without a prohibited broadcast. Phase 6B1 implementation commit
+  `f43dcb886265722193f35a60e38cb7fce5ca7fe1` is staged only at protected Preview deployment
+  `dpl_zQ9sneHYfRMPimFJJSKBSs4W8sCF`; it has not changed the production deployment or canonical
+  domain.
 - Current production UI: `/app`, `/invoice/[id]`, and `/receipt/[id]` provide role-aware wallet
   action preparation and verified read-only settlement records; `/` redirects to `/app`. The
-  locally validated Phase 6B1 candidate adds a real landing page and Signal Ledger product
+  Phase 6B1 Preview adds a real landing page and Signal Ledger product
   hierarchy while preserving contract reads, wallet actions, journal behavior, and receipt
-  evidence. No Phase 6B1 Preview URL or deployment is recorded yet.
+  evidence. It is protected and has no production or custom-domain alias.
 - Escrow contract: core implemented, fuzzed, statefully invariant-tested, deployed to
   Coston2, and source-verified; not audited or claimed production-ready.
 - Foundry: pinned production contract, deterministic mocks, 56 Phase 3A unit tests, seven passing
@@ -1070,13 +1072,13 @@ Gate: `PUBLIC_DEPLOYMENT_NEEDS_REVISION`
 
 ## Phase 6B1 — Signal Ledger interface
 
-Gate: `LOCAL_VALIDATION_PASS_PREVIEW_PENDING`
+Gate: `PHASE_6B1_PASS`
 
 ### Locked scope and current status
 
-- Phase 6B1 is an interface-only implementation whose local gate passes. Its locked direction is recorded in
-  `docs/DESIGN_DIRECTION.md`, and its route and hierarchy target is recorded in
-  `docs/INTERFACE_SPEC.md`.
+- Phase 6B1 is an interface-only implementation whose local and protected-Preview gates pass. Its
+  locked direction is recorded in `docs/DESIGN_DIRECTION.md`, and its route and hierarchy target
+  is recorded in `docs/INTERFACE_SPEC.md`.
 - The target replaces the root redirect with a real Signal Ledger landing page, adds the four-state
   illustrative `$100` price-protection scenario, introduces a product shell, strengthens active
   and terminal invoice hierarchy, and refines receipt labels and responsive presentation.
@@ -1085,9 +1087,9 @@ Gate: `LOCAL_VALIDATION_PASS_PREVIEW_PENDING`
   verified receipt locators, and protected historical artifacts remain outside the change scope.
 - The current production deployment remains `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9`, and the current
   canonical domain remains `https://proofpay.paysmat.xyz`. No production promotion, DNS change,
-  domain change, contract transaction, or Phase 6B1 Preview deployment has been performed.
+  domain change, production alias, or contract transaction has been performed.
 
-### Local evidence and decision boundary
+### Local and Preview evidence
 
 - Pinned Node `22.21.1` passes lint, strict typechecking, the production build, `65` unit tests in
   seven files, `25` one-worker deterministic browser tests, one production-hydration test, exact
@@ -1111,7 +1113,20 @@ Gate: `LOCAL_VALIDATION_PASS_PREVIEW_PENDING`
   starting commit. Three initialized top-level submodules remain at their recorded commits with
   clean worktrees. No wallet signature, transaction broadcast, contract write, live-flow script,
   evidence replacement, DNS mutation, or production deployment action occurred.
-- The one permitted non-production Vercel Preview and its public read-only smoke are still pending.
-  No Preview URL, deployment ID, or hosted Phase 6B1 claim exists at this checkpoint.
+- Implementation commit `f43dcb886265722193f35a60e38cb7fce5ca7fe1` was deployed once to Vercel
+  Preview deployment `dpl_zQ9sneHYfRMPimFJJSKBSs4W8sCF` at
+  `https://proofpay-paysmat-k90ehmlen-adamolekuntemitope4-2758s-projects.vercel.app`. The protected,
+  unaliased Preview target reached `READY`/`STAGED`; Vercel records creation at
+  `2026-08-10T16:47:05.590Z` and readiness at `2026-08-10T16:47:32.117Z`.
+- `artifacts/signal-ledger/preview-proof.json` records `PASS`: 13 route checks, 13 Axe scans with
+  zero serious or critical findings, eight screenshots at `390`, `640`, and `1440` CSS-pixel
+  widths, no horizontal overflow, exact keyboard behavior and polite live updates for all four
+  scenarios, and zero console errors, page errors, or failed responses. Its strict injected wallet
+  prepared a create simulation with zero signature, transaction-send, or broadcast calls. An
+  independent browser pass covered all required routes and structural accessibility at `320` and
+  `1440` CSS pixels.
+- This protected Preview evidence does not prove anonymous access, active-live-invoice behavior,
+  human usability, or WCAG conformance. The production deployment and canonical domain remain
+  unchanged, and no promotion, DNS change, production alias, or contract transaction occurred.
 - This automated implementation evidence does not prove human usability, WCAG conformance, audit
   coverage, mainnet readiness, legal escrow, fiat settlement, or production security.

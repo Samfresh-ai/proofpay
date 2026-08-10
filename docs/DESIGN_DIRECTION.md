@@ -1,7 +1,7 @@
 # Signal Ledger design direction
 
-Status: Phase 6B1 implementation and local validation pass. This remains the locked interface
-direction; the non-production Preview and human visual-review decisions are separate gates.
+Status: Phase 6B1 implementation, local validation, and the single non-production Preview pass.
+This remains the locked interface direction; human visual review is a separate decision.
 
 ## Thesis
 
@@ -113,9 +113,14 @@ must not become a dashboard sidebar.
 - Loading, unknown-invoice, unavailable-receipt, and RPC-failure states remain distinct and honest.
 - Reduced-motion mode has functional parity.
 
-Automated, responsive, and visual checks cover these implementation requirements. They are not a
-claim of human usability testing, WCAG conformance, audit coverage, mainnet readiness, or
-production security.
+Automated, responsive, visual, and protected-Preview checks cover these implementation
+requirements. Implementation commit `f43dcb886265722193f35a60e38cb7fce5ca7fe1` is staged at the
+protected, unaliased Vercel Preview
+`https://proofpay-paysmat-k90ehmlen-adamolekuntemitope4-2758s-projects.vercel.app` as deployment
+`dpl_zQ9sneHYfRMPimFJJSKBSs4W8sCF`. `artifacts/signal-ledger/preview-proof.json` records the
+hosted route, responsive, keyboard, accessibility, failure, and unsigned wallet-simulation checks.
+The Preview evidence is not a claim of anonymous access, human usability testing, WCAG
+conformance, audit coverage, mainnet readiness, or production security.
 
 ## Avoid list
 

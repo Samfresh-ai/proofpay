@@ -1,8 +1,8 @@
 # ProofPay interface specification
 
 Status: Phases 5A–5D are implemented and validated, and Phase 6A production remains live at the
-existing canonical domain. Phase 6B1 Signal Ledger implementation and local validation pass; its
-single non-production Preview is still pending at this checkpoint.
+existing canonical domain. Phase 6B1 Signal Ledger implementation, local validation, and its
+single protected non-production Preview pass.
 
 ## Current synopsis
 
@@ -41,14 +41,13 @@ release quote reports a nonzero shortfall and no applicable intent is pending re
 zero-shortfall refresh offers release, not top-up. Funding, evidence submission, release,
 cancellation, and refund retain their one-time state protections.
 
-## Phase 6B1 Signal Ledger interface — local gate passed
+## Phase 6B1 Signal Ledger interface — Preview gate passed
 
 Phase 6B1 changes the public presentation and product hierarchy without changing the deployed
 contract, wallet-action policy, funding intent, journal/reconciliation behavior, evidence
 commitments, receipt locators, canonical production domain, or current production deployment. The
 locked visual direction is recorded in `docs/DESIGN_DIRECTION.md`. Local automated, read-only live,
-and visual evidence now validates the implementation; no Phase 6B1 hosted-Preview claim exists at
-this checkpoint.
+visual, and protected hosted-Preview evidence validates the implementation.
 
 ### Landing page
 
@@ -123,6 +122,27 @@ visually reviewed final captures under `artifacts/signal-ledger/`; the final cap
 records zero horizontal overflow, console errors, page errors, signature requests, transaction
 sends, or broadcasts. No human usability study, WCAG-conformance claim, audit, mainnet,
 legal-escrow, fiat-settlement, or production-readiness claim is introduced.
+
+Implementation commit `f43dcb886265722193f35a60e38cb7fce5ca7fe1` was deployed once to the
+protected, unaliased Vercel Preview
+`https://proofpay-paysmat-k90ehmlen-adamolekuntemitope4-2758s-projects.vercel.app` as deployment
+`dpl_zQ9sneHYfRMPimFJJSKBSs4W8sCF`. The Preview target reached `READY`/`STAGED`; Vercel records
+creation at `2026-08-10T16:47:05.590Z` and readiness at `2026-08-10T16:47:32.117Z`.
+
+`artifacts/signal-ledger/preview-proof.json` records `PASS`: 13 route checks, 13 Axe scans with
+zero serious or critical findings, eight screenshots at `390`, `640`, and `1440` CSS-pixel widths,
+and zero horizontal overflow, console errors, page errors, or failed responses. It also records
+the exact four keyboard-operated scenario outcomes with retained focus and polite live-region
+updates. A strict injected wallet prepared one create simulation with zero signing, transaction
+send, or broadcast calls. An independent browser pass covered all required routes and structural
+accessibility at `320` and `1440` CSS pixels. Read-only Coston2 reconciliation passed for invoice
+`1` at block `33875416` and invoice `2` at block `33875367`. This is automated protected-Preview
+evidence, not active-live-invoice coverage, anonymous access evidence, human usability testing, or
+WCAG-conformance proof.
+
+Production deployment `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9` and canonical domain
+`https://proofpay.paysmat.xyz` remain unchanged. Phase 6B1 performed no promotion, DNS change,
+production alias, or contract transaction.
 
 ## Historical Phase 5A read-only boundary
 
