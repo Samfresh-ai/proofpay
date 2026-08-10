@@ -47,9 +47,11 @@ function roleLabel(role?: WalletRole): string {
 }
 
 export function WalletConnectionPanel({
+  connectLabel = "Connect wallet",
   role,
   wallet,
 }: {
+  connectLabel?: string;
   role?: WalletRole;
   wallet: ProofPayWallet;
 }) {
@@ -86,7 +88,7 @@ export function WalletConnectionPanel({
           onClick={() => void wallet.connectWallet()}
           type="button"
         >
-          {wallet.connectPending ? "Waiting for wallet" : "Connect wallet"}
+          {wallet.connectPending ? "Waiting for wallet" : connectLabel}
         </button>
         {wallet.connectError ? (
           <p aria-live="assertive" className="action-error">{decodeProofPayError(wallet.connectError)}</p>
@@ -152,27 +154,34 @@ export function TransactionIntentReview({
       <div className="preview-heading">
         <div>
           <p className="utility-label">Prepared transaction</p>
-          <h3 id="transaction-intent-title">Review the exact intent</h3>
+          <h3 id="transaction-intent-title">Confirm what this wallet will do</h3>
         </div>
         <span className="unconfirmed-mark">Not confirmed</span>
       </div>
-      <dl className="intent-list">
-        <div><dt>Action</dt><dd>{intent.actionLabel}</dd></div>
-        <div><dt>Network</dt><dd>{intent.network} · chain {intent.chainId}</dd></div>
-        <div><dt>Contract</dt><dd className="hash">{intent.contract}</dd></div>
-        <div><dt>Connected account</dt><dd className="hash">{intent.account}</dd></div>
-        <div><dt>Invoice ID</dt><dd>{intent.invoiceId}</dd></div>
-        <div><dt>Token and amount</dt><dd>{intent.token === "None" ? "No token transfer" : intent.amountDisplay}</dd></div>
+      <dl className="intent-list intent-summary">
+        <div><dt>What happens</dt><dd>{intent.expectedResult}</dd></div>
+        <div><dt>Maximum token movement</dt><dd>{intent.maximumDisplay}</dd></div>
         <div><dt>Recipient</dt><dd>{intent.recipientDisplay}</dd></div>
-        {intent.contractDeadline ? <div><dt>Delivery deadline</dt><dd><ContractDeadline value={intent.contractDeadline} /></dd></div> : null}
-        <div><dt>Quote deadline</dt><dd className="timestamp">{deadlineDisplay(intent.quoteDeadline)}</dd></div>
-        <div><dt>Maximum accepted</dt><dd>{intent.maximumDisplay}</dd></div>
-        <div><dt>What can change</dt><dd>{intent.changeBeforeConfirmation}</dd></div>
-        <div><dt>Expected result</dt><dd>{intent.expectedResult}</dd></div>
-        <div><dt>Completion proof</dt><dd>{intent.completionProof}</dd></div>
-        <div><dt>Intent hash</dt><dd className="hash">{intent.intentHash}</dd></div>
-        {transactionHash ? <div><dt>Transaction hash</dt><dd className="hash">{transactionHash}</dd></div> : null}
+        <div><dt>What may change before confirmation</dt><dd>{intent.changeBeforeConfirmation}</dd></div>
+        <div><dt>Proof of completion</dt><dd>{intent.completionProof}</dd></div>
       </dl>
+      <details className="exact-transaction-details">
+        <summary>Review exact transaction details</summary>
+        <div className="details-body">
+          <dl className="intent-list">
+            <div><dt>Action</dt><dd>{intent.actionLabel}</dd></div>
+            <div><dt>Network</dt><dd>{intent.network} · chain {intent.chainId}</dd></div>
+            <div><dt>Contract</dt><dd className="hash">{intent.contract}</dd></div>
+            <div><dt>Connected account</dt><dd className="hash">{intent.account}</dd></div>
+            <div><dt>Invoice ID</dt><dd>{intent.invoiceId}</dd></div>
+            <div><dt>Token and amount</dt><dd>{intent.token === "None" ? "No token transfer" : intent.amountDisplay}</dd></div>
+            {intent.contractDeadline ? <div><dt>Delivery deadline</dt><dd><ContractDeadline value={intent.contractDeadline} /></dd></div> : null}
+            <div><dt>Quote deadline</dt><dd className="timestamp">{deadlineDisplay(intent.quoteDeadline)}</dd></div>
+            <div><dt>Intent hash</dt><dd className="hash">{intent.intentHash}</dd></div>
+            {transactionHash ? <div><dt>Transaction hash</dt><dd className="hash">{transactionHash}</dd></div> : null}
+          </dl>
+        </div>
+      </details>
       <p aria-live="polite" className={`transaction-state transaction-state-${status}`} data-testid="transaction-state">
         {transactionStateCopy(status)}
       </p>
@@ -201,32 +210,30 @@ export function TransactionJournalView({
   onAbandon: (intentHash: Hash) => void;
 }) {
   const recent = [...entries].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt)).slice(0, 8);
+  if (recent.length === 0) return null;
+
   return (
     <section aria-labelledby="transaction-journal-title" className="transaction-journal" data-testid="transaction-journal">
       <div className="section-rule">
         <p className="utility-label">This browser only</p>
-        <h2 id="transaction-journal-title">Transaction journal</h2>
+        <h2 id="transaction-journal-title">Recent activity</h2>
       </div>
-      {recent.length === 0 ? (
-        <p className="muted-copy">No prepared or submitted ProofPay actions are stored in this browser.</p>
-      ) : (
-        <ol className="journal-list">
-          {recent.map((entry) => (
-            <li key={entry.intentHash}>
-              <div>
-                <strong>{entry.action.replaceAll("_", " ")}</strong>
-                <span>Invoice {entry.invoiceId} · {entry.status}</span>
-                {entry.transactionHash ? <span className="hash">{entry.transactionHash}</span> : null}
-              </div>
-              {entry.status === "prepared" && entry.transactionHash === null ? (
-                <button className="quiet-button" onClick={() => onAbandon(entry.intentHash)} type="button">
-                  Abandon unsigned intent
-                </button>
-              ) : null}
-            </li>
-          ))}
-        </ol>
-      )}
+      <ol className="journal-list">
+        {recent.map((entry) => (
+          <li key={entry.intentHash}>
+            <div>
+              <strong>{entry.action.replaceAll("_", " ")}</strong>
+              <span>Invoice {entry.invoiceId} · {entry.status}</span>
+              {entry.transactionHash ? <span className="hash">{entry.transactionHash}</span> : null}
+            </div>
+            {entry.status === "prepared" && entry.transactionHash === null ? (
+              <button className="quiet-button" onClick={() => onAbandon(entry.intentHash)} type="button">
+                Abandon unsigned intent
+              </button>
+            ) : null}
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }

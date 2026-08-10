@@ -27,7 +27,7 @@ export const metadata: Metadata = {
     siteName: "ProofPay",
     title: PROOFPAY_PUBLIC_TITLE,
     description: PROOFPAY_PUBLIC_DESCRIPTION,
-    url: "/app",
+    url: "/",
   },
 };
 

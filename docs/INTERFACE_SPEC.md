@@ -1,8 +1,8 @@
 # ProofPay interface specification
 
-Status: Phases 5A–5D implemented and validated. Phase 5D's repeated-top-up journal correction is
-proved by deterministic unit and simulated-wallet browser evidence; no live repeated top-up is
-claimed.
+Status: Phases 5A–5D are implemented and validated, and Phase 6A production remains live at the
+existing canonical domain. Phase 6B1 Signal Ledger implementation and local validation pass; its
+single non-production Preview is still pending at this checkpoint.
 
 ## Current synopsis
 
@@ -40,6 +40,89 @@ The top-up control is available only to the connected client for a `SUBMITTED` i
 release quote reports a nonzero shortfall and no applicable intent is pending reconciliation. A
 zero-shortfall refresh offers release, not top-up. Funding, evidence submission, release,
 cancellation, and refund retain their one-time state protections.
+
+## Phase 6B1 Signal Ledger interface — local gate passed
+
+Phase 6B1 changes the public presentation and product hierarchy without changing the deployed
+contract, wallet-action policy, funding intent, journal/reconciliation behavior, evidence
+commitments, receipt locators, canonical production domain, or current production deployment. The
+locked visual direction is recorded in `docs/DESIGN_DIRECTION.md`. Local automated, read-only live,
+and visual evidence now validates the implementation; no Phase 6B1 hosted-Preview claim exists at
+this checkpoint.
+
+### Landing page
+
+`/` becomes a real product page in this fixed order: product header; hero and illustrative
+milestone; problem; how ProofPay works; price protection; live proof; built on Flare; final call to
+action. Its header contains ProofPay, `How it works`, `Live proof`, a visible `Coston2 testnet`
+badge, and `Create a milestone`; it contains no wallet control.
+
+The hero leads with `Keep the milestone in dollars. Settle it in FXRP.` and explains that the
+milestone is priced at funding and release, a 10% FXRP buffer protects the target, unused FXRP
+returns to the client, and a shortfall blocks release until top-up. Its primary action opens
+`/app`; the secondary action opens `/receipt/2`.
+
+The hero scenario is labelled `Illustrative $100 milestone · not live Coston2 data`. It fixes the
+funding price at `$1/XRP`, base at `100 FXRP`, buffer at `10 FXRP`, and lock at `110 FXRP`:
+
+| Release price | Required now | Result |
+| --- | --- | --- |
+| `$1.25` | `80 FXRP` | payout `80`, refund `30` |
+| `$1.00` | `100 FXRP` | payout `100`, refund `10` |
+| `$0.95` | `105.263158 FXRP` | payout `105.263158`, refund `4.736842` |
+| `$0.90` | `111.111112 FXRP` | shortfall `1.111112`; release blocked pending top-up |
+
+The visible calculation contains only USD target, locked FXRP, required FXRP now, and result. Four
+buttons retain focus, expose the result through a polite live region, and switch instantly under
+reduced motion. The scenario is explanatory arithmetic, never a fallback for failed Coston2 data.
+
+`How ProofPay works` maps `AGREE -> FUND -> DELIVER -> SETTLE`, plus the derived `BLOCKED` outcome,
+to the actual invoice record, protected quote, evidence commitment, release quote, and contract
+events. Price protection uses one causal calculation and no chart. `Live proof` is headed `One
+settled milestone, decoded from Coston2`, uses only verified invoice `2` values, and keeps full
+contract, transaction, and commitment identifiers behind the existing copy/reveal/explorer
+controls. The final action is headed `Create a dollar-priced FXRP milestone` and opens `/app`.
+
+### Application shell and invoice hierarchy
+
+Landing, `/app`, and active invoice controls use a modern system sans on the cool shell canvas.
+Only receipt/document inserts retain the editorial serif and warm paper palette. The product header
+contains ProofPay, Coston2 context, wallet state on application routes, and one contextual action;
+there is no sidebar.
+
+`/app` makes milestone creation dominant. When disconnected, its primary instruction is `Connect
+wallet to create a milestone`; the form stays accessible but visually recedes. Existing milestone
+lookup remains compact. An empty transaction journal is not rendered, and recent activity appears
+only when entries exist.
+
+Active invoices show, in order, one lifecycle strip; state, role, USD target, lock, and next
+permitted action; one action focus panel; and progressively disclosed technical evidence. The
+action headings are state-specific: `Fund this $100 milestone`, `Attach delivery evidence`, `Add
+the required top-up`, or `Release payment`. The always-visible action summary answers what happens,
+the maximum movement, recipient, what may change, and the proof of completion. Network, contract,
+account, invoice, deadlines, and hashes sit under `Review exact transaction details`. All existing
+policy, quote, approval, signing, broadcast, reconciliation, and journal hooks remain authoritative.
+
+Terminal invoices show state, payout/refund where confirmed, a compact lifecycle, and `View
+settlement receipt`; they do not render an empty action panel. Product copy says `SETTLED`, while
+`RELEASED` remains a disclosed technical state. Mobile renders one lifecycle representation.
+
+### Receipt refinements and evidence boundary
+
+Receipts preserve their verified values and copy/reveal/explorer behavior. `SETTLEMENT RECEIPT ·
+INVOICE #N` becomes more prominent than the long milestone title. The two technical disclosures are
+named `How this settlement was confirmed` and `Commitments and final contract state`. The receipt
+uses a compact one-line site footer and removes the outer receipt shadow on small screens.
+
+Loading, RPC failure, unknown invoice, and unavailable receipt remain distinct fail-closed states.
+Phase 6B1 passed checks at `320`, `390`, `768`, `1024`, and `1440` CSS pixels plus a `200%`-zoom
+equivalent viewport. Keyboard focus, reduced motion, Axe serious/critical findings, wrapping,
+target sizes, hydration, exact scenario math, protected behavior, controlled loading/RPC failure,
+and read-only Coston2 reconciliation all pass. The evidence includes 12 pre-edit baselines and 18
+visually reviewed final captures under `artifacts/signal-ledger/`; the final capture manifest
+records zero horizontal overflow, console errors, page errors, signature requests, transaction
+sends, or broadcasts. No human usability study, WCAG-conformance claim, audit, mainnet,
+legal-escrow, fiat-settlement, or production-readiness claim is introduced.
 
 ## Historical Phase 5A read-only boundary
 

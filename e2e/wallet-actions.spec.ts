@@ -1,7 +1,7 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
 import { encodeFunctionData, encodeFunctionResult } from "viem";
-import { mkdir } from "node:fs/promises";
+import { access, mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import {
@@ -20,8 +20,15 @@ const refinementArtifacts = resolve(process.cwd(), "artifacts", "interface-refin
 
 async function captureRefinement(page: Page, name: string) {
   await mkdir(refinementArtifacts, { recursive: true });
+  const artifactPath = resolve(refinementArtifacts, name);
+  try {
+    await access(artifactPath);
+    return;
+  } catch {
+    // Historical refinement evidence is immutable; capture only when absent.
+  }
   await page.screenshot({
-    path: resolve(refinementArtifacts, name),
+    path: artifactPath,
     fullPage: true,
     animations: "disabled",
   });
@@ -390,13 +397,15 @@ test("confirmed top-ups stay in history while distinct later quotes can top up a
     (window as never as { __proofPayWalletTest: { state: { transactions: unknown[] } } })
       .__proofPayWalletTest.state.transactions.length
   ));
-  const readIntentHash = async () => await page
-    .getByTestId("transaction-intent")
-    .locator("dt")
-    .filter({ hasText: "Intent hash" })
-    .locator("..")
-    .locator("dd")
-    .innerText();
+  const readIntentHash = async () => (
+    await page
+      .getByTestId("transaction-intent")
+      .locator("dt")
+      .filter({ hasText: "Intent hash" })
+      .locator("..")
+      .locator("dd")
+      .textContent()
+  )?.trim() ?? "";
 
   await page.getByRole("button", { name: "Refresh and simulate settlement" }).click();
   await expect(page.getByTestId("settlement-preview")).toContainText("exact shortfall is 1 FXRP");

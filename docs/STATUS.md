@@ -4,18 +4,22 @@ Updated: 2026-08-10
 
 ## Current state
 
-- Active phase: Phase 0 through Phase 5D complete; Phase 6A public deployment is live, with one
-  explicit hosted funding-flow evidence gap.
-- Overall decision: `PUBLIC_DEPLOYMENT_NEEDS_REVISION`. Application commit
+- Active phase: Phase 0 through Phase 5D complete; Phase 6A public deployment is live with one
+  explicit hosted funding-flow evidence gap; Phase 6B1 Signal Ledger implementation and local
+  validation are complete, with its one non-production Preview still pending.
+- Overall decision: `PHASE_6B1_LOCAL_VALIDATION_PASS_PREVIEW_PENDING`. The Phase 6A historical gate remains
+  `PUBLIC_DEPLOYMENT_NEEDS_REVISION`. Application commit
   `903c36bf8d0bf172c1aaf113b46db375c4e210c7` is deployed as Vercel deployment
   `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9` at `https://proofpay.paysmat.xyz`. DNS, HTTPS, anonymous
   routes, production smoke, logs, and both read-only invoice reconciliations pass. The requested
   hosted client funding-role quote and funding-intent screenshot remain impossible to prove from
-  the two terminal invoices without a prohibited broadcast.
-- Application UI: `/app`, `/invoice/[id]`, and `/receipt/[id]` provide role-aware wallet action
-  preparation and verified read-only settlement records. Phase 5D changes only browser journal and
-  action policy plus the failing transaction-button hover contrast; it adds no contract, backend,
-  indexer, database, authentication, analytics, or public-deployment behavior.
+  the two terminal invoices without a prohibited broadcast. Phase 6B1 has not changed that
+  production deployment or canonical domain.
+- Current production UI: `/app`, `/invoice/[id]`, and `/receipt/[id]` provide role-aware wallet
+  action preparation and verified read-only settlement records; `/` redirects to `/app`. The
+  locally validated Phase 6B1 candidate adds a real landing page and Signal Ledger product
+  hierarchy while preserving contract reads, wallet actions, journal behavior, and receipt
+  evidence. No Phase 6B1 Preview URL or deployment is recorded yet.
 - Escrow contract: core implemented, fuzzed, statefully invariant-tested, deployed to
   Coston2, and source-verified; not audited or claimed production-ready.
 - Foundry: pinned production contract, deterministic mocks, 56 Phase 3A unit tests, seven passing
@@ -1063,3 +1067,51 @@ Gate: `PUBLIC_DEPLOYMENT_NEEDS_REVISION`
 - The custom domain, HTTPS, anonymous public checks, and read-only reconciliation all pass. Phase
   6A still cannot receive the requested full PASS because the hosted role-aware funding quote and
   funding-intent screenshot remain an explicit evidence gap under the no-broadcast rule.
+
+## Phase 6B1 — Signal Ledger interface
+
+Gate: `LOCAL_VALIDATION_PASS_PREVIEW_PENDING`
+
+### Locked scope and current status
+
+- Phase 6B1 is an interface-only implementation whose local gate passes. Its locked direction is recorded in
+  `docs/DESIGN_DIRECTION.md`, and its route and hierarchy target is recorded in
+  `docs/INTERFACE_SPEC.md`.
+- The target replaces the root redirect with a real Signal Ledger landing page, adds the four-state
+  illustrative `$100` price-protection scenario, introduces a product shell, strengthens active
+  and terminal invoice hierarchy, and refines receipt labels and responsive presentation.
+- Contract code and deployment, Coston2 addresses, lifecycle state, wallet-action policy, quote and
+  approval rules, signing/broadcast behavior, journal reconciliation, evidence commitments,
+  verified receipt locators, and protected historical artifacts remain outside the change scope.
+- The current production deployment remains `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9`, and the current
+  canonical domain remains `https://proofpay.paysmat.xyz`. No production promotion, DNS change,
+  domain change, contract transaction, or Phase 6B1 Preview deployment has been performed.
+
+### Local evidence and decision boundary
+
+- Pinned Node `22.21.1` passes lint, strict typechecking, the production build, `65` unit tests in
+  seven files, `25` one-worker deterministic browser tests, one production-hydration test, exact
+  secret scanning, and `git diff --check`. Scenario tests reproduce all four six-decimal outcomes;
+  browser tests cover metadata, application/invoice/receipt/unknown/unavailable routes, role-aware
+  simulated actions, duplicate prevention, keyboard focus, reduced motion, Axe serious/critical
+  findings, `320/390/768/1024/1440` widths, and a `200%`-zoom equivalent.
+- Twelve pre-edit route screenshots and their hashes are preserved under
+  `artifacts/signal-ledger/baseline/`. The one-worker final visual runner produced `18` visually
+  reviewed captures and `artifacts/signal-ledger/visual-proof.json`: `3,000,868` screenshot bytes,
+  no overflow, console error, page error, signature request, transaction-send request, or broadcast.
+  It uses live read-only invoice `2` values, explicit deterministic fixtures, and controlled
+  pre-network loading/RPC-failure modes without substituting one evidence class for another.
+- Read-only Coston2 reconciliation passes for invoice `1` at block `33875416` and invoice `2` at
+  block `33875367`. Both remain terminal with conserved payout/refund and zero liabilities and
+  contract balance; all invoice-2 verifier checks pass, and the four protected artifact hashes are
+  unchanged. The first invoice-1 request observed a transient public-RPC wait state; the exact
+  retry passed, consistent with the interface's fail-closed read boundary.
+- Contract code and deployment, ABIs, wallet/action/funding/journal/manifest policy, DNS,
+  `deployment/vercel.json`, and tracked historical evidence have zero diff from the Phase 6B1
+  starting commit. Three initialized top-level submodules remain at their recorded commits with
+  clean worktrees. No wallet signature, transaction broadcast, contract write, live-flow script,
+  evidence replacement, DNS mutation, or production deployment action occurred.
+- The one permitted non-production Vercel Preview and its public read-only smoke are still pending.
+  No Preview URL, deployment ID, or hosted Phase 6B1 claim exists at this checkpoint.
+- This automated implementation evidence does not prove human usability, WCAG conformance, audit
+  coverage, mainnet readiness, legal escrow, fiat settlement, or production security.

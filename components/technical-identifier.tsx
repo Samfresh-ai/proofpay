@@ -32,7 +32,7 @@ export function TechnicalIdentifier({
           {copied ? "Copied" : "Copy"}
         </button>
         {explorerHref ? (
-          <a aria-label={explorerLabel} href={explorerHref} rel="noreferrer" target="_blank">Explorer</a>
+          <a className="identifier-link" aria-label={explorerLabel} href={explorerHref} rel="noreferrer" target="_blank">Explorer</a>
         ) : null}
       </div>
       <details className="identifier-reveal">

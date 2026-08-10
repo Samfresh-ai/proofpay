@@ -257,43 +257,42 @@ export function CreateMilestoneWorkspace() {
     setPrepared(null);
   };
 
+  const headerWalletState = !wallet.hydrated
+    ? "Checking wallet"
+    : !wallet.isConnected
+      ? "Wallet not connected"
+      : wallet.chainState === "wrong_network"
+        ? `Wallet on chain ${wallet.chainId ?? "unknown"}`
+        : wallet.account
+          ? `${wallet.account.slice(0, 8)}…${wallet.account.slice(-6)}`
+          : "Wallet connected";
+
   return (
-    <main className="page-shell" id="main-content">
-      <article className="paper app-paper">
-        <div className="paper-body">
-          <header className="document-masthead">
-            <div>
-              <div className="wordmark">ProofPay <span aria-hidden="true">/</span> milestone workspace</div>
-              <p className="network-label">Flare Testnet Coston2 · chain 114</p>
-            </div>
-            <span className="status-stamp">Actions</span>
-          </header>
+    <main className="page-shell product-shell" id="main-content">
+      <article className="app-surface app-paper">
+        <header className="product-header">
+          <Link className="product-wordmark" href="/">ProofPay</Link>
+          <div className="product-header-context">
+            <span className="network-badge">Coston2 testnet</span>
+            <span className="wallet-state-label">{headerWalletState}</span>
+            <Link className="context-link" href="/receipt/2">View live receipt</Link>
+          </div>
+        </header>
 
+        <div className="app-surface-body">
           <header className="document-heading app-heading">
-            <p className="eyebrow">Create or locate a milestone</p>
-            <h1>Start from the agreement.</h1>
-            <p>Record one client, one freelancer, one USD target, and one scope commitment before FXRP funding begins.</p>
+            <p className="eyebrow">New milestone</p>
+            <h1>Create a dollar-priced FXRP milestone</h1>
+            <p>Set the client, USD target, deadline, and scope commitment before any FXRP is funded.</p>
           </header>
 
-          <section aria-labelledby="locate-title" className="workspace-section">
+          <section aria-labelledby="create-title" className="workspace-section create-workspace-primary">
             <div className="section-rule">
-              <p className="utility-label">Existing milestone</p>
-              <h2 id="locate-title">Locate an invoice</h2>
+              <p className="utility-label">Agreement details</p>
+              <h2 id="create-title">Prepare the milestone</h2>
             </div>
-            <form className="inline-form" onSubmit={locate}>
-              <label htmlFor="invoice-id">Invoice ID</label>
-              <input id="invoice-id" inputMode="numeric" onChange={(event) => setLocateId(event.target.value)} value={locateId} />
-              <button className="quiet-button" type="submit">Open invoice</button>
-            </form>
-          </section>
-
-          <section aria-labelledby="create-title" className="workspace-section">
-            <div className="section-rule">
-              <p className="utility-label">New milestone</p>
-              <h2 id="create-title">Prepare an invoice</h2>
-            </div>
-            <WalletConnectionPanel wallet={wallet} />
-            <div className="form-grid">
+            <WalletConnectionPanel connectLabel="Connect wallet to create a milestone" wallet={wallet} />
+            <div className={`form-grid${wallet.isConnected ? "" : " form-grid-receded"}`}>
               <label>
                 <span>Milestone title</span>
                 <input onChange={(event) => setTitle(event.target.value)} value={title} />
@@ -333,7 +332,7 @@ export function CreateMilestoneWorkspace() {
                 <div><dt>UTC equivalent</dt><dd>{deadlineSummary.utc}</dd></div>
                 <div><dt>Contract timestamp</dt><dd>{deadlineSeconds?.toString()}</dd></div>
               </dl>
-            ) : null}
+              ) : null}
             <p className="form-note">The connected wallet becomes the freelancer. Simulation creates no invoice and requests no signature.</p>
             <button
               className="transaction-button"
@@ -366,10 +365,22 @@ export function CreateMilestoneWorkspace() {
                 {...(prepared.status === "prepared" ? { onAbandon: abandonPrepared } : {})}
               />
               {prepared.status === "confirmed" ? (
-                <p><Link href={`/invoice/${prepared.intent.invoiceId}`}>Open invoice {prepared.intent.invoiceId}</Link></p>
+                <p><Link className="text-action" href={`/invoice/${prepared.intent.invoiceId}`}>Open invoice {prepared.intent.invoiceId}</Link></p>
               ) : null}
             </section>
           ) : null}
+
+          <section aria-labelledby="locate-title" className="workspace-section locate-workspace">
+            <div className="section-rule compact-section-rule">
+              <p className="utility-label">Already recorded</p>
+              <h2 id="locate-title">Find an existing milestone.</h2>
+            </div>
+            <form className="inline-form" onSubmit={locate}>
+              <label htmlFor="invoice-id">Invoice ID</label>
+              <input id="invoice-id" inputMode="numeric" onChange={(event) => setLocateId(event.target.value)} value={locateId} />
+              <button className="quiet-button" type="submit">Open milestone</button>
+            </form>
+          </section>
 
           <TransactionJournalView entries={journal.entries} onAbandon={journal.abandon} />
         </div>

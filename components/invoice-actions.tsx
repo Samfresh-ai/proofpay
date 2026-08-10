@@ -76,6 +76,40 @@ function toleranceLabel(value: bigint): string {
   return `${Number(value) / 100}%`;
 }
 
+function walletRoleDisplay(role: ReturnType<typeof deriveInvoiceActions>["role"]): string {
+  switch (role) {
+    case "client": return "Client";
+    case "freelancer": return "Freelancer";
+    case "unrelated": return "Read-only wallet";
+    default: return "Connect to determine role";
+  }
+}
+
+function actionFocusHeading(
+  invoice: InvoiceView,
+  policy: ReturnType<typeof deriveInvoiceActions>,
+  releaseQuote: ReleaseQuote | null,
+): string {
+  const actions = policy.actions;
+  if (policy.role === "disconnected") return "Connect wallet to check the next action";
+  if (policy.role === "unrelated") return "Read-only milestone";
+  if (
+    actions.includes("top_up")
+    || (policy.role === "client" && releaseQuote !== null && releaseQuote.topUpFxrp > 0n)
+  ) return "Add the required top-up";
+  if (actions.includes("cancel")) return "Cancel this unfunded milestone";
+  if (actions.includes("refund")) return "Return locked FXRP to the client";
+  if (actions.includes("fund")) {
+    return `Fund this ${invoice.usdTarget?.display ?? "USD-priced"} milestone`;
+  }
+  if (actions.includes("submit_evidence")) return "Attach delivery evidence";
+  if (actions.includes("release")) return "Release payment";
+  if (invoice.status === "SUBMITTED" && policy.role === "client" && releaseQuote === null) {
+    return "Refresh the release preview";
+  }
+  return "No wallet action is available";
+}
+
 export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
   const router = useRouter();
   const wallet = useProofPayWallet();
@@ -650,24 +684,23 @@ export function InvoiceActions({ invoice }: { invoice: InvoiceView }) {
   };
 
   const terminal = ["RELEASED", "CANCELLED", "REFUNDED"].includes(invoice.status);
-  if (terminal) {
-    return (
-      <section aria-labelledby="wallet-actions-title" className="wallet-actions terminal-actions" data-testid="wallet-actions-terminal">
-        <div className="section-rule">
-          <p className="utility-label">Wallet actions</p>
-          <h2 id="wallet-actions-title">This milestone is closed</h2>
-        </div>
-        <p>No state-changing control is available for a terminal invoice.</p>
-      </section>
-    );
-  }
+  if (terminal) return null;
+
+  const focusHeading = actionFocusHeading(invoice, policy, releaseQuote);
 
   return (
-    <section aria-labelledby="wallet-actions-title" className="wallet-actions" data-testid="wallet-actions">
+    <section aria-labelledby="wallet-actions-title" className="wallet-actions action-focus-panel" data-testid="wallet-actions">
       <div className="section-rule">
-        <p className="utility-label">Role-aware controls</p>
-        <h2 id="wallet-actions-title">Next wallet action</h2>
+        <p className="utility-label">Next permitted action</p>
+        <h2 id="wallet-actions-title">{focusHeading}</h2>
       </div>
+      <dl className="action-facts" aria-label="Milestone action facts">
+        <div><dt>State</dt><dd>{invoice.status}</dd></div>
+        <div><dt>Your role</dt><dd>{walletRoleDisplay(policy.role)}</dd></div>
+        <div data-testid="invoice-target"><dt>USD target</dt><dd>{invoice.usdTarget?.display ?? "Unavailable"}</dd></div>
+        <div data-testid="invoice-current-lock"><dt>FXRP locked</dt><dd>{invoice.currentFxrpLocked?.display ?? "Unavailable"}</dd></div>
+        <div><dt>Next permitted action</dt><dd>{focusHeading}</dd></div>
+      </dl>
       <WalletConnectionPanel role={policy.role} wallet={wallet} />
       <p className="policy-explanation" data-testid="policy-explanation">{policy.explanation}</p>
 

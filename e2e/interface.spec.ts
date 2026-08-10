@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { PROOFPAY_PUBLIC_DESCRIPTION, PROOFPAY_PUBLIC_TITLE } from "../lib/site-metadata";
+import { PROOFPAY_PUBLIC_DESCRIPTION } from "../lib/site-metadata";
 
 const transactionAction =
   /connect(?: a)? wallet|sign|approve|fund|submit evidence|top[ -]?up|release|refund|cancel|send(?: transaction)?/i;
@@ -31,14 +31,21 @@ async function expectNoHorizontalOverflow(page: Page) {
 
 test.describe.configure({ mode: "serial" });
 
-test("root intentionally redirects to the deployment-safe application entry", async ({ page }) => {
+test("root renders the Signal Ledger landing page with deployment-safe metadata", async ({ page }) => {
   const response = await page.goto("/", { waitUntil: "networkidle" });
 
   expect(response?.ok()).toBe(true);
-  await expect(page).toHaveURL(/\/app$/u);
-  await expect(page).toHaveTitle(PROOFPAY_PUBLIC_TITLE);
+  await expect(page).toHaveURL(/\/$/u);
+  await expect(page).toHaveTitle("Dollar-priced FXRP milestones");
   await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", PROOFPAY_PUBLIC_DESCRIPTION);
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", /\/app$/u);
+  const canonical = await page.locator('link[rel="canonical"]').getAttribute("href");
+  expect(new URL(canonical ?? "", page.url()).pathname).toBe("/");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Keep the milestone in dollars. Settle it in FXRP.",
+  );
+  await expect(
+    page.getByRole("banner").getByRole("link", { name: "Create a milestone", exact: true }),
+  ).toHaveAttribute("href", "/app");
   await expect(page.getByTestId("public-trust-notice")).toHaveText(
     "ProofPay by PaysmatCoston2 testnet · Test assets only · Not audited · Not legal or fiat escrow",
   );

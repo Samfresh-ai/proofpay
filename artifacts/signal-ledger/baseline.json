@@ -1,0 +1,244 @@
+{
+  "schemaVersion": 1,
+  "phase": "6B1",
+  "kind": "pre-edit-visual-behavior-baseline",
+  "applicationCommit": "72082abb71cdde68904d8d0f99da45e297c48eb4",
+  "captureWindowUtc": {
+    "startedAt": "2026-08-10T14:43:42.285Z",
+    "finishedAt": "2026-08-10T14:44:11.508Z"
+  },
+  "runner": {
+    "framework": "Playwright",
+    "version": "1.62.1",
+    "browser": "chromium",
+    "workers": 1,
+    "fullyParallel": false,
+    "dataMode": "fixture",
+    "fixtureAuthorization": "phase5a-e2e",
+    "baseUrl": "http://127.0.0.1:3220",
+    "locale": "en-US",
+    "timezone": "Africa/Lagos",
+    "colorScheme": "light",
+    "reducedMotion": "reduce"
+  },
+  "safety": {
+    "walletProviderInjected": false,
+    "walletInteractions": 0,
+    "signingRequests": 0,
+    "broadcasts": 0,
+    "externalRequests": 0,
+    "externalRequestPolicy": "block",
+    "consoleErrors": 0,
+    "pageErrors": 0
+  },
+  "routes": [
+    {
+      "requestedRoute": "/",
+      "responseStatus": 200,
+      "redirectChain": [
+        { "url": "http://127.0.0.1:3220/", "status": 307 },
+        { "url": "http://127.0.0.1:3220/app", "status": 200 }
+      ],
+      "finalUrl": "http://127.0.0.1:3220/app",
+      "title": "ProofPay — FXRP Milestone Settlement",
+      "canonical": "http://localhost:3000/app",
+      "heading": "Start from the agreement.",
+      "keyBehavior": {
+        "documentKind": "workspace",
+        "statusStamp": "ACTIONS",
+        "networkLabel": "Flare Testnet Coston2 · chain 114",
+        "walletState": "wallet-state-no-wallet",
+        "transactionActionButtonCount": 1,
+        "ethereumProviderPresent": false
+      },
+      "captures": [
+        {
+          "viewport": { "name": "desktop", "width": 1440, "height": 1000 },
+          "layout": { "contentWidth": 1440, "contentHeight": 1873, "horizontalOverflowPx": 0 },
+          "screenshot": { "path": "artifacts/signal-ledger/baseline/01-root-desktop.png", "bytes": 135756, "sha256": "8bc0e10ee4e24e266abd4d905df1dd1627a13f402743be66ffae523ec49f3103" }
+        },
+        {
+          "viewport": { "name": "mobile", "width": 390, "height": 844 },
+          "layout": { "contentWidth": 390, "contentHeight": 1954, "horizontalOverflowPx": 0 },
+          "screenshot": { "path": "artifacts/signal-ledger/baseline/07-root-mobile.png", "bytes": 103288, "sha256": "d5dbccb8e72ac6c7ad4c201472518e5895c34ddf042065b24584b0e34eaed017" }
+        }
+      ]
+    },
+    {
+      "requestedRoute": "/app",
+      "responseStatus": 200,
+      "redirectChain": [
+        { "url": "http://127.0.0.1:3220/app", "status": 200 }
+      ],
+      "finalUrl": "http://127.0.0.1:3220/app",
+      "title": "ProofPay — FXRP Milestone Settlement",
+      "canonical": "http://localhost:3000/app",
+      "heading": "Start from the agreement.",
+      "keyBehavior": {
+        "documentKind": "workspace",
+        "statusStamp": "ACTIONS",
+        "networkLabel": "Flare Testnet Coston2 · chain 114",
+        "walletState": "wallet-state-no-wallet",
+        "transactionActionButtonCount": 1,
+        "ethereumProviderPresent": false
+      },
+      "captures": [
+        {
+          "viewport": { "name": "desktop", "width": 1440, "height": 1000 },
+          "layout": { "contentWidth": 1440, "contentHeight": 1873, "horizontalOverflowPx": 0 },
+          "screenshot": { "path": "artifacts/signal-ledger/baseline/02-app-desktop.png", "bytes": 135756, "sha256": "8bc0e10ee4e24e266abd4d905df1dd1627a13f402743be66ffae523ec49f3103" }
+        },
+        {
+          "viewport": { "name": "mobile", "width": 390, "height": 844 },
+          "layout": { "contentWidth": 390, "contentHeight": 1954, "horizontalOverflowPx": 0 },
+          "screenshot": { "path": "artifacts/signal-ledger/baseline/08-app-mobile.png", "bytes": 103288, "sha256": "d5dbccb8e72ac6c7ad4c201472518e5895c34ddf042065b24584b0e34eaed017" }
+        }
+      ]
+    },
+    {
+      "requestedRoute": "/invoice/1",
+      "responseStatus": 200,
+      "redirectChain": [
+        { "url": "http://127.0.0.1:3220/invoice/1", "status": 200 }
+      ],
+      "finalUrl": "http://127.0.0.1:3220/invoice/1",
+      "title": "Milestone invoice — ProofPay",
+      "canonical": "http://localhost:3000/invoice/1",
+      "heading": "Deploy and verify ProofPayEscrow on Coston2",
+      "keyBehavior": {
+        "documentKind": "invoice",
+        "statusStamp": "SETTLED",
+        "networkLabel": "Flare Testnet Coston2 · chain 114",
+        "stateHeading": "Payment settled",
+        "invoiceTarget": "MILESTONE TARGET $5.00",
+        "invoiceCurrentLock": "FXRP LOCKED AT FUNDING 5.299945 FXRP",
+        "settlementReceiptLinkVisible": true,
+        "transactionActionButtonCount": 0,
+        "ethereumProviderPresent": false
+      },
+      "captures": [
+        {
+          "viewport": { "name": "desktop", "width": 1440, "height": 1000 },
+          "layout": { "contentWidth": 1440, "contentHeight": 3429, "horizontalOverflowPx": 0 },
+          "screenshot": { "path": "artifacts/signal-ledger/baseline/03-invoice-1-desktop.png", "bytes": 352528, "sha256": "0fa415d987ce701e3d2848d3ae09d93d5adb7d711c24fc9231ebe4e20eccfb9f" }
+        },
+        {
+          "viewport": { "name": "mobile", "width": 390, "height": 844 },
+          "layout": { "contentWidth": 390, "contentHeight": 4336, "horizontalOverflowPx": 0 },
+          "screenshot": { "path": "artifacts/signal-ledger/baseline/09-invoice-1-mobile.png", "bytes": 269890, "sha256": "ed6073810a1c3549f501f505450ac95f17be09d4eb9593e23910894d795980d2" }
+        }
+      ]
+    },
+    {
+      "requestedRoute": "/invoice/2",
+      "responseStatus": 200,
+      "redirectChain": [
+        { "url": "http://127.0.0.1:3220/invoice/2", "status": 200 }
+      ],
+      "finalUrl": "http://127.0.0.1:3220/invoice/2",
+      "title": "Milestone invoice — ProofPay",
+      "canonical": "http://localhost:3000/invoice/2",
+      "heading": "Sample scenario — Top-up required",
+      "keyBehavior": {
+        "documentKind": "invoice",
+        "statusStamp": "SUBMITTED",
+        "networkLabel": "Fixture-only sample · not live Coston2 evidence",
+        "stateHeading": "Top-up required",
+        "sampleScenario": "SAMPLE SCENARIO — TOP-UP REQUIRED · FIXTURE ONLY",
+        "invoiceTarget": "ILLUSTRATIVE MILESTONE TARGET $5.00",
+        "invoiceCurrentLock": "ILLUSTRATIVE STORED LOCK 4 FXRP",
+        "settlementReceiptLinkVisible": false,
+        "transactionActionButtonCount": 0,
+        "ethereumProviderPresent": false
+      },
+      "captures": [
+        {
+          "viewport": { "name": "desktop", "width": 1440, "height": 1000 },
+          "layout": { "contentWidth": 1440, "contentHeight": 1823, "horizontalOverflowPx": 0 },
+          "screenshot": { "path": "artifacts/signal-ledger/baseline/04-invoice-2-desktop.png", "bytes": 174799, "sha256": "182af56d82dd3c35a5df668ad7043f85c3f1296430f65efa7a91a070dbaaf541" }
+        },
+        {
+          "viewport": { "name": "mobile", "width": 390, "height": 844 },
+          "layout": { "contentWidth": 390, "contentHeight": 2309, "horizontalOverflowPx": 0 },
+          "screenshot": { "path": "artifacts/signal-ledger/baseline/10-invoice-2-mobile.png", "bytes": 133175, "sha256": "dcbaf7ae85545741d7654e450b7feeef0cdc852a75bbbf8ce8101ad1f4259169" }
+        }
+      ]
+    },
+    {
+      "requestedRoute": "/receipt/1",
+      "responseStatus": 200,
+      "redirectChain": [
+        { "url": "http://127.0.0.1:3220/receipt/1", "status": 200 }
+      ],
+      "finalUrl": "http://127.0.0.1:3220/receipt/1",
+      "title": "Settlement receipt — ProofPay",
+      "canonical": "http://localhost:3000/receipt/1",
+      "heading": "Deploy and verify ProofPayEscrow on Coston2",
+      "keyBehavior": {
+        "documentKind": "receipt",
+        "statusStamp": "SETTLED",
+        "networkLabel": "Flare Testnet Coston2 · chain 114",
+        "receiptTarget": "MILESTONE TARGET $5.00",
+        "receiptPayout": "FREELANCER PAYOUT 4.818748 FXRP",
+        "receiptRefund": "CLIENT REFUND 0.481197 FXRP",
+        "evidenceDetailsExpanded": false,
+        "transactionActionButtonCount": 0,
+        "ethereumProviderPresent": false
+      },
+      "captures": [
+        {
+          "viewport": { "name": "desktop", "width": 1440, "height": 1000 },
+          "layout": { "contentWidth": 1440, "contentHeight": 2684, "horizontalOverflowPx": 0 },
+          "screenshot": { "path": "artifacts/signal-ledger/baseline/05-receipt-1-desktop.png", "bytes": 247077, "sha256": "c3e0dde8089aec3fdc115a08bf2a102a59fa2220449a65829fd51ce095c6bb58" }
+        },
+        {
+          "viewport": { "name": "mobile", "width": 390, "height": 844 },
+          "layout": { "contentWidth": 390, "contentHeight": 2462, "horizontalOverflowPx": 0 },
+          "screenshot": { "path": "artifacts/signal-ledger/baseline/11-receipt-1-mobile.png", "bytes": 165362, "sha256": "51ec800acfea1b3d5eff998a4bd6c9ababc5ac1bdccd9223c3136f9a52265b6f" }
+        }
+      ]
+    },
+    {
+      "requestedRoute": "/receipt/2",
+      "responseStatus": 200,
+      "redirectChain": [
+        { "url": "http://127.0.0.1:3220/receipt/2", "status": 200 }
+      ],
+      "finalUrl": "http://127.0.0.1:3220/receipt/2",
+      "title": "Settlement receipt — ProofPay",
+      "canonical": "http://localhost:3000/receipt/2",
+      "heading": "No settlement receipt exists yet",
+      "keyBehavior": {
+        "documentKind": "empty",
+        "statusStamp": "NO RECORD",
+        "networkLabel": "Coston2 · chain 114",
+        "transactionActionButtonCount": 0,
+        "ethereumProviderPresent": false
+      },
+      "captures": [
+        {
+          "viewport": { "name": "desktop", "width": 1440, "height": 1000 },
+          "layout": { "contentWidth": 1440, "contentHeight": 1000, "horizontalOverflowPx": 0 },
+          "screenshot": { "path": "artifacts/signal-ledger/baseline/06-receipt-2-desktop.png", "bytes": 61290, "sha256": "683ecb62641d62590909158e4979a16af51f09c5f6cc7c8b39368efe6694a3c5" }
+        },
+        {
+          "viewport": { "name": "mobile", "width": 390, "height": 844 },
+          "layout": { "contentWidth": 390, "contentHeight": 844, "horizontalOverflowPx": 0 },
+          "screenshot": { "path": "artifacts/signal-ledger/baseline/12-receipt-2-mobile.png", "bytes": 42853, "sha256": "6a63b870cdae84e6bdc32e4bdaa9ce2f4f946f782f109d1c2e994cdb87988712" }
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "routeCount": 6,
+    "screenshotCount": 12,
+    "desktopCaptures": 6,
+    "mobileCaptures": 6,
+    "successfulFinalResponses": 12,
+    "horizontalOverflowFindings": 0,
+    "duplicateVisualPairs": [
+      ["01-root-desktop.png", "02-app-desktop.png"],
+      ["07-root-mobile.png", "08-app-mobile.png"]
+    ]
+  }
+}

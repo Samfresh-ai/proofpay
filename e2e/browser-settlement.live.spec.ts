@@ -418,7 +418,8 @@ test("settles one new Coston2 invoice through the injected browser wallet path",
     expect(final.contractFxrpAtomic).toBe("0");
     expect(BigInt(final.freelancerFxrpAtomic) - freelancerBefore).toBe(released.freelancerPayout);
     expect(BigInt(final.clientFxrpAtomic) - clientBefore).toBe(released.clientRefund);
-    await expect(page.getByTestId("wallet-actions-terminal")).toBeVisible();
+    await expect(page.getByTestId("wallet-actions-terminal")).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "View settlement receipt" })).toBeVisible();
     await screenshot(page, "07-released-invoice.png");
   }
 
@@ -430,12 +431,12 @@ test("settles one new Coston2 invoice through the injected browser wallet path",
   await expect(page.getByTestId("money-locked")).toContainText("FXRP");
   await expect(page.getByTestId("money-payout")).toContainText("FXRP");
   await expect(page.getByTestId("money-refund")).toContainText("FXRP");
-  await page.getByTestId("evidence-details").getByText("Reveal lifecycle transactions").click();
+  await page.getByTestId("evidence-details").getByText("How this settlement was confirmed").click();
   for (const hash of [
     transactionHash(journal, "create"), transactionHash(journal, "fund"),
     transactionHash(journal, "evidence"), transactionHash(journal, "release"),
   ]) await expect(receiptDocument).toContainText(hash);
-  await page.getByTestId("contract-details").getByText("Reveal commitments and contract state").click();
+  await page.getByTestId("contract-details").getByText("Commitments and final contract state").click();
   await expect(page.getByTestId("contract-details")).toContainText("0 FXRP");
   await screenshot(page, "08-final-public-receipt.png");
   const receiptAxe = await new AxeBuilder({ page }).analyze();

@@ -146,9 +146,10 @@ async function expectInvoiceOneFacts(page: Page) {
 
 async function expectReceiptOneFacts(page: Page) {
   const document = page.getByTestId("receipt-document");
-  await expect(document.getByRole("heading", { level: 1 })).toHaveText(expected.title);
+  await expect(document.getByRole("heading", { level: 1 })).toHaveText("SETTLEMENT RECEIPT · INVOICE #1");
+  await expect(document.locator(".receipt-milestone-title")).toHaveText(expected.title);
   await expect(page.getByTestId("status-stamp")).toHaveText("SETTLED");
-  await expect(document).toContainText("Settlement receipt · invoice #1");
+  await expect(document).toContainText("SETTLEMENT RECEIPT · INVOICE #1");
   await expect(page.getByTestId("money-target")).toContainText("$5.00");
   await expect(page.getByTestId("money-locked")).toContainText("5.299945 FXRP");
   await expect(page.getByTestId("money-payout")).toContainText("4.818748 FXRP");
@@ -215,6 +216,35 @@ async function expectExpandedReceiptFacts(page: Page) {
 
 test.describe.configure({ mode: "serial" });
 
+test("the landing page decodes invoice 2 without substituting illustrative values", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await openLiveRoute(page, "/", "landing-live-proof");
+
+  const proof = page.getByTestId("landing-live-proof");
+  await expect(proof).toContainText("Invoice #2 · Verify ProofPay wallet actions on Coston2");
+  await expect(proof).toContainText("$2.00");
+  await expect(proof).toContainText("2.126887 FXRP");
+  await expect(proof).toContainText("1.933309 FXRP");
+  await expect(proof).toContainText("0.193578 FXRP");
+  await expect(proof.locator(".confirmed-state")).toHaveText("SETTLED");
+
+  const identifiers = proof.locator(".live-proof-identifier");
+  await expect(identifiers).toHaveCount(4);
+  for (const [label, value] of [
+    ["ProofPayEscrow contract", "0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21"],
+    ["Funding transaction", "0x60aa661a4c755b807a1911cce513603f103912226570ab9d9fafaf272eb3d857"],
+    ["Evidence commitment", "0xb98859ff3db3f2bb2f06bb2e8ef96f60bfa47432080fde6159476e2547ecacda"],
+    ["Release transaction", "0x6e1b8c009e9021aa05d5aeabaf1e7effcbf0b15402ef7a4b153bfcf26a82d921"],
+  ] as const) {
+    const row = identifiers.filter({ hasText: label });
+    await expect(row.locator("code").first()).toHaveAttribute("aria-label", `${label}: ${value}`);
+    await expect(row.getByRole("button", { name: "Copy" })).toBeVisible();
+    await expect(row.getByText("Reveal full value", { exact: true })).toBeVisible();
+  }
+  await expect(proof.getByRole("link", { name: /Coston2 explorer/iu })).toHaveCount(3);
+  await expectNoAccessibilityViolations(page);
+});
+
 test("one live invoice read proves desktop and mobile evidence", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 1000 });
   await openLiveRoute(page, "/invoice/1", "invoice-document");
@@ -253,16 +283,16 @@ test("invoice 2 proves the refined settlement record and required screenshots", 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await openLiveRoute(page, "/invoice/2", "invoice-document");
   const invoice = page.getByTestId("invoice-document");
-  await expect(invoice.locator(".wordmark")).toHaveText("PROOFPAY / MILESTONE RECORD");
+  await expect(invoice.locator(".document-label")).toHaveText("MILESTONE RECORD");
   await expect(page.getByTestId("status-stamp")).toHaveText("SETTLED");
   await expect(invoice.getByRole("heading", { level: 1 })).toHaveText("Verify ProofPay wallet actions on Coston2");
   await expect(page.getByTestId("invoice-target")).toContainText("$2.00");
   await expect(page.getByTestId("invoice-current-lock")).toContainText("2.126887 FXRP");
-  await expect(page.getByTestId("invoice-current-lock")).toContainText("FXRP locked at funding");
+  await expect(page.getByTestId("invoice-current-lock")).toContainText("FXRP locked");
   await expect(invoice).toContainText("The freelancer was paid and the unused FXRP returned to the client.");
-  await expect(invoice).toContainText("At release, 1.933309 FXRP covered the $2.00 target.");
-  await expect(invoice).toContainText("The unused 0.193578 FXRP returned to the client.");
-  await expect(page.getByTestId("price-movement")).toContainText("+0.01%");
+  await expect(page.getByTestId("terminal-payout")).toContainText("1.933309 FXRP");
+  await expect(page.getByTestId("terminal-refund")).toContainText("0.193578 FXRP");
+  await expect(page.getByTestId("price-movement")).toHaveCount(0);
   await expect(page.getByTestId("invoice-contract-state")).toContainText("RELEASED");
   const rail = page.getByTestId("settlement-rail");
   for (const [label, event, block] of [
@@ -290,7 +320,8 @@ test("invoice 2 proves the refined settlement record and required screenshots", 
   await page.setViewportSize({ width: 1440, height: 1000 });
   await openLiveRoute(page, "/receipt/2", "receipt-document");
   const receipt = page.getByTestId("receipt-document");
-  await expect(receipt.locator(".wordmark")).toHaveText("PROOFPAY / SETTLEMENT RECEIPT");
+  await expect(receipt.locator(".document-label")).toHaveText("SETTLEMENT RECEIPT");
+  await expect(receipt.getByRole("heading", { level: 1 })).toHaveText("SETTLEMENT RECEIPT · INVOICE #2");
   await expect(page.getByTestId("money-locked")).toContainText("2.126887 FXRP");
   await expect(page.getByTestId("money-payout")).toContainText("1.933309 FXRP");
   await expect(page.getByTestId("money-refund")).toContainText("0.193578 FXRP");
