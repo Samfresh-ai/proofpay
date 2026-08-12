@@ -8,7 +8,7 @@ import {
   formatIllustrativeFxrp,
 } from "../lib/illustrative-scenarios.js";
 
-describe("Signal Ledger illustrative milestone", () => {
+describe("Escrow Flow illustrative milestone", () => {
   it("keeps the fixed funding basis at $100 with 110 FXRP locked", () => {
     expect(ILLUSTRATIVE_TARGET_USD_ATOMIC).toBe(100_000_000n);
     expect(ILLUSTRATIVE_LOCKED_FXRP_ATOMIC).toBe(110_000_000n);

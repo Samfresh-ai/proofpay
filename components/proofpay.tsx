@@ -342,17 +342,18 @@ export function MilestoneDocument({ invoice, receipt }: { invoice: InvoiceView; 
                 </h2>
                 <p>{invoice.summary}</p>
                 <p className="next-step">{invoice.nextStep}</p>
-                {invoice.status === "RELEASED" && invoice.receiptLocatorAvailable ? (
-                  <p>
-                    <Link className="receipt-link" href={`/receipt/${invoice.id}`}>View settlement receipt</Link>
-                  </p>
-                ) : null}
               </div>
               {receipt ? (
                 <dl className="terminal-settlement-facts" aria-label="Confirmed settlement movement">
                   <MoneyLine label="Freelancer payout" testId="terminal-payout" value={receipt.confirmed.payout.display} />
                   <MoneyLine label="Client refund" testId="terminal-refund" value={receipt.confirmed.refund.display} />
                 </dl>
+              ) : null}
+              {invoice.status === "RELEASED" && invoice.receiptLocatorAvailable ? (
+                <div className="terminal-receipt-bridge">
+                  <p className="terminal-receipt-label">Completed settlement → permanent proof</p>
+                  <Link className="receipt-link" href={`/receipt/${invoice.id}`}>View settlement receipt</Link>
+                </div>
               ) : null}
             </section>
 

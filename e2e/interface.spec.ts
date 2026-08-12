@@ -31,7 +31,7 @@ async function expectNoHorizontalOverflow(page: Page) {
 
 test.describe.configure({ mode: "serial" });
 
-test("root renders the Signal Ledger landing page with deployment-safe metadata", async ({ page }) => {
+test("root renders the Escrow Flow landing page with deployment-safe metadata", async ({ page }) => {
   const response = await page.goto("/", { waitUntil: "networkidle" });
 
   expect(response?.ok()).toBe(true);

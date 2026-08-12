@@ -59,6 +59,7 @@ function LiveProof({ receipt }: { receipt: ReceiptView | null }) {
       {proof ? (
         <div className="live-proof-surface" data-testid="landing-live-proof">
           <div className="live-proof-summary">
+            <p className="live-proof-status">Settled on Coston2</p>
             <p className="live-proof-context">Invoice #2 · {proof.receipt.invoice.title}</p>
             <dl>
               <div>
@@ -144,9 +145,6 @@ export function LandingPage({ receipt }: { receipt: ReceiptView | null }) {
             <h1 id="landing-hero-title">Keep the milestone in dollars. Settle it in FXRP.</h1>
             <p className="hero-support">
               ProofPay prices the milestone when it is funded and again when it is released. A 10% FXRP buffer protects the target; unused FXRP returns to the client, and a shortfall blocks release until it is topped up.
-            </p>
-            <p className="hero-plain-language">
-              Agree on a dollar amount. The freelancer receives that value; unused funds return to the client, and payment stops if the milestone is short.
             </p>
             <div className="hero-actions">
               <Link className="primary-action" href="/app">Create a milestone</Link>

@@ -16,10 +16,21 @@ async function expectNoHorizontalOverflow(page: Page) {
   const dimensions = await page.evaluate(() => ({
     contentWidth: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth),
     viewportWidth: document.documentElement.clientWidth,
+    offenders: [...document.querySelectorAll("body *")]
+      .map((element) => {
+        const bounds = element.getBoundingClientRect();
+        return {
+          selector: `${element.tagName.toLowerCase()}${typeof element.className === "string" && element.className ? `.${element.className.trim().replaceAll(/\s+/gu, ".")}` : ""}`,
+          left: Math.round(bounds.left),
+          right: Math.round(bounds.right),
+        };
+      })
+      .filter((element) => element.left < -1 || element.right > document.documentElement.clientWidth + 1)
+      .slice(0, 8),
   }));
   expect(
     dimensions.contentWidth,
-    `content width ${dimensions.contentWidth}px exceeds the ${dimensions.viewportWidth}px viewport`,
+    `content width ${dimensions.contentWidth}px exceeds the ${dimensions.viewportWidth}px viewport at ${page.url()}; offenders ${JSON.stringify(dimensions.offenders)}`,
   ).toBeLessThanOrEqual(dimensions.viewportWidth);
 }
 
@@ -45,7 +56,7 @@ function durationInMilliseconds(value: string): number {
 
 test.describe.configure({ mode: "serial" });
 
-test("the root is a canonical wallet-free landing page with the locked Signal Ledger narrative", async ({ page }) => {
+test("the root is a canonical wallet-free landing page with the Escrow Flow narrative", async ({ page }) => {
   await openRoute(page, "/");
 
   expect(new URL(page.url()).pathname).toBe("/");
@@ -110,7 +121,7 @@ test("all four illustrative prices expose exact settlement math and retain keybo
 
   const illustration = page.getByTestId("illustrative-milestone");
   await expect(illustration.getByRole("heading", { level: 2 })).toHaveText(
-    "Illustrative $100 milestone · not live Coston2 data",
+    "Illustrative $100 milestone · no transaction is being sent",
   );
   await expect(illustration.locator(".funding-basis")).toHaveText(
     "Funded at $1.00 per XRP · 100 FXRP base + 10 FXRP protection = 110 FXRP locked",
@@ -177,10 +188,26 @@ test("all four illustrative prices expose exact settlement math and retain keybo
     await expect(definitionValue(illustration.locator(".scenario-calculation"), "FXRP required now")).toHaveText(scenario.required);
     await expect(definitionValue(illustration.locator(".scenario-calculation"), "Result")).toHaveText(scenario.result);
     await expect(illustration.locator(".escrow-line")).toHaveAttribute("data-outcome", scenario.outcome);
+    await expect(illustration.locator(".escrow-flow-agreement")).toContainText("USD agreement");
+    await expect(illustration.locator(".escrow-flow-lock")).toContainText("110 FXRP");
     await expect(announcement).toContainText(`At ${scenario.price} per XRP`);
     await expect(announcement).toContainText(`ProofPay requires ${scenario.required}`);
     await expect(announcement).toContainText(scenario.result);
   }
+
+  const rise = illustration.getByRole("button", { name: "XRP rises to $1.25" });
+  const steady = illustration.getByRole("button", { name: "XRP remains $1.00" });
+  await rise.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(steady).toBeFocused();
+  await expect(steady).toHaveAttribute("aria-pressed", "true");
+  await page.keyboard.press("End");
+  await expect(illustration.getByRole("button", { name: "XRP falls to $0.90" })).toBeFocused();
+  await expect(illustration.locator(".escrow-flow-barrier")).toContainText("Top up exactly 1.111112 FXRP");
+  await page.keyboard.press("Home");
+  await expect(rise).toBeFocused();
+  await expect(illustration.locator(".escrow-flow-payout")).toContainText("80 FXRP");
+  await expect(illustration.locator(".escrow-flow-refund")).toContainText("30 FXRP");
 });
 
 test("reduced-motion users receive the same scenario result without a visual transition", async ({ page }) => {
@@ -200,6 +227,15 @@ test("reduced-motion users receive the same scenario result without a visual tra
   await expect(page.locator(".scenario-announcement")).toContainText(
     "ProofPay requires 111.111112 FXRP. Release blocked · 1.111112 FXRP top-up required.",
   );
+  const animatedFlow = await page.locator(".escrow-rule, .escrow-branches .escrow-flow-node, .escrow-flow-barrier")
+    .evaluateAll((elements) => elements.map((element) => ({
+      animationName: getComputedStyle(element).animationName,
+      transitionDuration: getComputedStyle(element).transitionDuration,
+    })));
+  for (const style of animatedFlow) {
+    expect(style.animationName).toBe("none");
+    expect(durationInMilliseconds(style.transitionDuration)).toBeLessThanOrEqual(1);
+  }
 });
 
 test("the disconnected application shell makes creation primary and hides an empty journal", async ({ page }) => {
@@ -281,6 +317,9 @@ test("the receipt prioritizes its receipt number and keeps both renamed evidence
   await openRoute(page, "/receipt/1");
 
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("SETTLEMENT RECEIPT · INVOICE #1");
+  await expect(page.locator(".receipt-paper")).toHaveCSS("background-color", "rgb(251, 248, 241)");
+  expect(await page.getByRole("heading", { level: 1 }).evaluate((element) => getComputedStyle(element).fontFamily))
+    .toMatch(/Iowan|Baskerville|Times/iu);
   await expect(page.locator(".receipt-milestone-title")).toHaveText("Deploy and verify ProofPayEscrow on Coston2");
   const evidence = page.getByTestId("evidence-details");
   const contract = page.getByTestId("contract-details");
@@ -318,6 +357,18 @@ test("the receipt prioritizes its receipt number and keeps both renamed evidence
   await expectNoHorizontalOverflow(page);
   await expect(page.locator(".receipt-paper")).toHaveCSS("box-shadow", "none");
   await expect(page.getByTestId("public-trust-notice")).toBeVisible();
+});
+
+test("prototype concepts and design routes are absent from the production application", async ({ page }) => {
+  for (const route of ["/", "/app", "/invoice/1", "/receipt/1"]) {
+    await openRoute(page, route);
+    await expect(page.locator("body")).not.toContainText(/Concept A|Concept B|Concept C|Application shell · disconnected state|The product surface ends here/u);
+  }
+
+  for (const route of ["/__design", "/__design/signal-black", "/__design/redline-protocol", "/__design/escrow-flow"]) {
+    const response = await page.goto(route, { waitUntil: "networkidle" });
+    expect(response?.status(), `${route} unexpectedly exists`).toBe(404);
+  }
 });
 
 test("deterministic unknown and unavailable routes fail closed without transaction controls", async ({ page }) => {
@@ -373,4 +424,15 @@ test("landing layout survives all target widths and a 200%-zoom-equivalent CSS v
   await expectNoHorizontalOverflow(page);
   await expect(page.locator(".scenario-controls")).toHaveCSS("grid-template-columns", /.+px .+px/u);
   await expectNoSeriousAccessibilityViolations(page);
+});
+
+test("application, milestone, receipt, and failure routes reflow without horizontal overflow", async ({ page }) => {
+  const routes = ["/app", "/invoice/1", "/receipt/1", "/invoice/999", "/receipt/999"];
+  for (const width of [320, 390, 768, 1024, 1440]) {
+    await page.setViewportSize({ width, height: width <= 390 ? 844 : 1000 });
+    for (const route of routes) {
+      await openRoute(page, route);
+      await expectNoHorizontalOverflow(page);
+    }
+  }
 });
