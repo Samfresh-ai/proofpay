@@ -526,7 +526,7 @@
     }
   },
   "rollback": {
-    "workingDirectory": "/home/samfresh22/openclaw-grower-workspace/proofpay",
+    "workingDirectory": "<repository-root>",
     "currentDeploymentId": "dpl_FAW3WmZqyeRunaxSkFqkPBu1T5Ny",
     "currentDeploymentUrl": "https://proofpay-paysmat-jidia45ao-adamolekuntemitope4-2758s-projects.vercel.app",
     "knownGoodDeploymentId": "dpl_HYzfUxvqqiLijsY2vCaNMXP268V9",

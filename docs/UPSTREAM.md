@@ -1,6 +1,54 @@
 # Upstream and reference record
 
-Last inspected: 2026-08-04
+Last inspected: 2026-08-12
+
+## ProofPay license boundary
+
+ProofPay's original source is released under the root MIT License, copyright
+2026 Samfresh-ai. That license does not replace, relicense, or remove any
+third-party notice. Git submodules and npm packages remain governed by their own
+licenses.
+
+The production contract imports narrow interfaces and utilities from pinned
+dependencies. The application uses published npm packages. No vendored upstream
+code should be presented as original ProofPay work.
+
+## Pinned contract dependencies
+
+| Dependency | Pin | License evidence in the checkout | ProofPay use |
+| --- | --- | --- | --- |
+| Flare periphery | `0.1.52` / `ca264d6a31ddfb53d1bef7cb7bd1942aa89d323a` | The imported Coston2 `FtsoV2Interface.sol` carries `SPDX-License-Identifier: MIT`; the inspected checkout has no root license file. | Production FTSOv2 interface and Coston2 network contracts |
+| OpenZeppelin Contracts | `v5.7.0` / `cab19933c33c2ad1d4c7a84864a3601dddfd16f3` | Root `LICENSE`: MIT | `IERC20`, `IERC20Metadata`, `SafeERC20`, `ReentrancyGuard`, and `Math` |
+| forge-std | `v1.16.2` / `bf647bd6046f2f7da30d0c2bf435e5c76a780c1b` | `LICENSE-MIT`, `LICENSE-APACHE`, and package metadata: `(Apache-2.0 OR MIT)` | Solidity deployment scripts and tests only |
+
+The three initialized top-level submodules are recorded in `.gitmodules` and
+must remain at these pins. OpenZeppelin's three nested test-only gitlinks are
+uninitialized in the reviewed repository; they are not required to compile or
+test ProofPay.
+
+## Direct JavaScript dependencies
+
+The versions below are locked by `package-lock.json`; the license values are
+from each installed package's metadata at the reviewed lock state.
+
+| Package | Reviewed version | Declared license |
+| --- | ---: | --- |
+| `@tanstack/react-query` | `5.101.4` | MIT |
+| `next` | `16.3.0` | MIT |
+| `react`, `react-dom` | `19.2.8` | MIT |
+| `viem` | `2.55.11` | MIT |
+| `wagmi` | `3.7.6` | MIT |
+| `@axe-core/playwright` | `4.12.1` | MPL-2.0 |
+| `@playwright/test` | `1.62.1` | Apache-2.0 |
+| `@types/node`, `@types/react`, `@types/react-dom` | `26.1.2`, `19.2.18`, `19.2.4` | MIT |
+| `eslint`, `eslint-config-next` | `9.39.5`, `16.3.0` | MIT |
+| `tsx` | `4.23.7` | MIT |
+| `typescript` | `6.0.3` | Apache-2.0 |
+| `vitest` | `4.1.10` | MIT |
+
+This table covers direct project packages, not every transitive package. Their
+published notices remain authoritative. `node_modules/` is ignored and is not
+published as ProofPay source.
 
 ## FAssets Demo
 
@@ -49,4 +97,3 @@ Observed repository inconsistency: `Transfer.tsx` and `Redeem.tsx` import `src/h
 - Not retained: glassmorphism, generic SaaS composition, bento grids, testimonials, pricing sections, logo clouds, or other preset aesthetics.
 
 No text, image, or code from this guide has been copied into ProofPay.
-

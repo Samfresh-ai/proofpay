@@ -1,0 +1,216 @@
+{
+  "schemaVersion": 1,
+  "phase": "7A",
+  "kind": "demo-video-capture-provenance",
+  "assembledAtUtc": "2026-08-12T17:18:24Z",
+  "canonicalOrigin": "https://proofpay.paysmat.xyz",
+  "claimsLedger": "docs/CLAIMS_LEDGER.md",
+  "sourceWindows": {
+    "phase7aPublicAuditStartedAtUtc": "2026-08-12T17:00:45.135Z",
+    "phase6B2VisualCaptureStartedAtUtc": "2026-08-12T15:37:32.110Z",
+    "phase6B2VisualCaptureCompletedAtUtc": "2026-08-12T15:39:51.329Z"
+  },
+  "captures": [
+    {
+      "file": "01-landing-production.png",
+      "route": "/",
+      "dataClassification": "public-production-read-only",
+      "claimsLedgerIds": ["UI-025", "WEB-006"],
+      "source": {
+        "artifact": "phase7a-judge/01-landing-full.png",
+        "sha256": "4640fd5f5fa02a87a2910ba0ac584a2ea268772d21f5aaeb30bb9a69aa0e88e5",
+        "dimensions": "1265x4830",
+        "captureWindowStartedAtUtc": "2026-08-12T17:00:45.135Z"
+      },
+      "transform": "crop 1255x930+0+0; remove scrollbar and repeated full-page segments; no pixel reconstruction",
+      "dimensions": "1255x930",
+      "sha256": "526dee0fd3bc0d9d939ae17eee348dd64cb62d19c347ae8a49750a470850e168"
+    },
+    {
+      "file": "02-scenario-refund.png",
+      "route": "/#illustrative-milestone-title",
+      "dataClassification": "illustrative-client-math",
+      "claimsLedgerIds": ["ARCH-002", "PROD-002", "UI-025"],
+      "source": {
+        "artifact": "artifacts/escrow-flow-final/03-scenario-rise.png",
+        "sha256": "adb75c32a43493d27a718dca3e0e05a3a56917ffe89708c9ce767f3338ed515f",
+        "captureWindowStartedAtUtc": "2026-08-12T15:37:32.110Z"
+      },
+      "transform": "identity copy",
+      "dimensions": "577x562",
+      "sha256": "adb75c32a43493d27a718dca3e0e05a3a56917ffe89708c9ce767f3338ed515f"
+    },
+    {
+      "file": "03-scenario-exact-coverage.png",
+      "route": "/#illustrative-milestone-title",
+      "dataClassification": "illustrative-client-math",
+      "claimsLedgerIds": ["ARCH-002", "PROD-002", "UI-025"],
+      "source": {
+        "artifact": "artifacts/escrow-flow-final/04-scenario-stable.png",
+        "sha256": "a20b08c5d78c48adafab47cfb2ff0af9a5f37cc2b0f4ce9f04a0f54437a59d6f",
+        "captureWindowStartedAtUtc": "2026-08-12T15:37:32.110Z"
+      },
+      "transform": "identity copy",
+      "dimensions": "577x562",
+      "sha256": "a20b08c5d78c48adafab47cfb2ff0af9a5f37cc2b0f4ce9f04a0f54437a59d6f"
+    },
+    {
+      "file": "04-scenario-buffer-protection.png",
+      "route": "/#illustrative-milestone-title",
+      "dataClassification": "illustrative-client-math",
+      "claimsLedgerIds": ["ARCH-002", "PROD-001", "PROD-002", "UI-025"],
+      "source": {
+        "artifact": "artifacts/escrow-flow-final/05-scenario-within-buffer.png",
+        "sha256": "29755717d131b1acea301b848727c2409f2edf2fd2eb3624220c489aa423edfa",
+        "captureWindowStartedAtUtc": "2026-08-12T15:37:32.110Z"
+      },
+      "transform": "identity copy",
+      "dimensions": "577x612",
+      "sha256": "29755717d131b1acea301b848727c2409f2edf2fd2eb3624220c489aa423edfa"
+    },
+    {
+      "file": "05-scenario-top-up-required.png",
+      "route": "/#illustrative-milestone-title",
+      "dataClassification": "illustrative-client-math",
+      "claimsLedgerIds": ["ARCH-002", "PROD-001", "UI-025"],
+      "source": {
+        "artifact": "artifacts/escrow-flow-final/06-scenario-top-up-required.png",
+        "sha256": "e641232a6e6d11ebef2d47334007e45b8f6fd5754c4526badfb5c359a97bfb8e",
+        "captureWindowStartedAtUtc": "2026-08-12T15:37:32.110Z"
+      },
+      "transform": "identity copy",
+      "dimensions": "577x628",
+      "sha256": "e641232a6e6d11ebef2d47334007e45b8f6fd5754c4526badfb5c359a97bfb8e"
+    },
+    {
+      "file": "06-app-production.png",
+      "route": "/app",
+      "dataClassification": "public-production-read-only",
+      "claimsLedgerIds": ["UI-008", "UI-009", "WEB-006"],
+      "source": {
+        "artifact": "phase7a-judge/04-app-full.png",
+        "sha256": "e7d719c28b367ca81e1d9265872309db80793b1b0bbc0fe06d45d79ce05f10bd",
+        "dimensions": "1265x1495",
+        "captureWindowStartedAtUtc": "2026-08-12T17:00:45.135Z"
+      },
+      "transform": "crop 1265x720+0+0; retain intact first viewport; discard repeated full-page segment",
+      "dimensions": "1265x720",
+      "sha256": "297ffd76933874e09afbe8d41056b79941ed32ddbb4cf0e4d23d2e39b44eb651"
+    },
+    {
+      "file": "07-funding-preview-fixture.png",
+      "route": "/invoice/3",
+      "dataClassification": "deterministic-synthetic-wallet-fixture-not-live",
+      "claimsLedgerIds": ["UI-009", "UI-010", "WEB-003"],
+      "requiredCaption": "DETERMINISTIC PREVIEW · NOT A LIVE TRANSACTION",
+      "source": {
+        "artifact": "artifacts/escrow-flow-final/09-funding-action-fixture.png",
+        "sha256": "d11280561917b13e66df00efd5835c47b13f04d94db6b22282665315bb30b92d",
+        "captureWindowStartedAtUtc": "2026-08-12T15:37:32.110Z"
+      },
+      "transform": "identity copy",
+      "dimensions": "1440x2838",
+      "sha256": "d11280561917b13e66df00efd5835c47b13f04d94db6b22282665315bb30b92d"
+    },
+    {
+      "file": "08-invoice-2-settled-production.png",
+      "route": "/invoice/2",
+      "dataClassification": "public-production-live-read-only",
+      "claimsLedgerIds": ["LIVE-005", "LIVE-006", "WEB-006"],
+      "settlementReleaseBlock": "33804839",
+      "source": {
+        "artifact": "phase7a-judge/02-invoice-2-full.png",
+        "sha256": "a2d042f6ea6977816074a0dbb3ee3ba0f1cb409ee7a91a7f358c11862c4e63c8",
+        "dimensions": "1265x1225",
+        "captureWindowStartedAtUtc": "2026-08-12T17:00:45.135Z"
+      },
+      "transform": "crop 1265x970+0+0; retain complete settled-invoice card; discard repeated tail",
+      "dimensions": "1265x970",
+      "sha256": "186547a85ed09662f2b79c1a2d106d2838bfa363b68f94a374084c226356b6ea"
+    },
+    {
+      "file": "09-receipt-2-production.png",
+      "route": "/receipt/2",
+      "dataClassification": "public-production-live-read-only",
+      "claimsLedgerIds": ["LIVE-006", "UI-014", "WEB-006"],
+      "source": {
+        "artifact": "phase7a-judge/03-receipt-2-expanded.png",
+        "sha256": "ee4508dec8d05698fc687444dcd090efcb92637e491ef16b94e57574203ad019",
+        "dimensions": "1265x3627",
+        "captureWindowStartedAtUtc": "2026-08-12T17:00:45.135Z"
+      },
+      "transform": "crop 1265x548+0+0; retain intact receipt arrival; discard repeated full-page segments",
+      "dimensions": "1265x548",
+      "sha256": "2220342da4b665fe87161fdbe0284d61cfe124ae0992562c99fa516abac81ce6"
+    },
+    {
+      "file": "10-receipt-2-expanded-live.png",
+      "route": "/receipt/2",
+      "dataClassification": "live-read-only",
+      "claimsLedgerIds": ["LIVE-004", "LIVE-005", "LIVE-006", "UI-014"],
+      "pinnedReadBlock": "33973217",
+      "source": {
+        "artifact": "artifacts/escrow-flow-final/15-receipt-2-expanded-live.png",
+        "sha256": "d52a0af9fa4f57dcdca49099cb801922db7c59230ff3b5f66a49b483ef2d4aa6",
+        "captureWindowStartedAtUtc": "2026-08-12T15:37:32.110Z"
+      },
+      "transform": "identity copy",
+      "dimensions": "1440x4239",
+      "sha256": "d52a0af9fa4f57dcdca49099cb801922db7c59230ff3b5f66a49b483ef2d4aa6"
+    },
+    {
+      "file": "11-built-on-flare.png",
+      "route": "/",
+      "dataClassification": "live-read-only-product-architecture",
+      "claimsLedgerIds": ["TECH-002", "TECH-003", "DEPLOY-001", "DEPLOY-002", "UI-025"],
+      "source": {
+        "artifact": "artifacts/escrow-flow-final/01-landing-desktop.png",
+        "sha256": "c94c1798167c26ec885e89a66aaff598db521238264390ae87c9e0e66577796c",
+        "dimensions": "1440x5375",
+        "captureWindowStartedAtUtc": "2026-08-12T15:37:32.110Z"
+      },
+      "transform": "crop 1440x680+0+4290; no overlay or generated content",
+      "dimensions": "1440x680",
+      "sha256": "98eb5c787045501842f3f66d67c737aa526bbb62df430d07ff5d7d5304e11055"
+    },
+    {
+      "file": "12-landing-mobile-production.png",
+      "route": "/",
+      "dataClassification": "public-production-read-only-mobile",
+      "claimsLedgerIds": ["UI-005", "UI-025", "WEB-006"],
+      "source": {
+        "artifact": "phase7a-judge/05-mobile-landing.png",
+        "sha256": "a35468a6ffbf84fe71f634d01b3a01f055830418708895267d91189ad09bbe1c",
+        "dimensions": "375x6614",
+        "captureWindowStartedAtUtc": "2026-08-12T17:00:45.135Z"
+      },
+      "transform": "crop 375x930+0+0; retain intact first mobile viewport sequence; discard repeated segments",
+      "dimensions": "375x930",
+      "sha256": "c139ba8a8debc4ca782efd72ca88caa0957d6fe6f58c7904f700d07a08ffbe9c"
+    },
+    {
+      "file": "13-receipt-2-mobile-production.png",
+      "route": "/receipt/2",
+      "dataClassification": "public-production-live-read-only-mobile",
+      "claimsLedgerIds": ["UI-005", "UI-014", "WEB-006"],
+      "source": {
+        "artifact": "phase7a-judge/06-mobile-receipt-2.png",
+        "sha256": "3c478b1dcb0cad060b0c8c970dcf2d6aa77eccffae0066612a920d514b41835c",
+        "dimensions": "375x2666",
+        "captureWindowStartedAtUtc": "2026-08-12T17:00:45.135Z"
+      },
+      "transform": "crop 375x760+0+0; retain intact receipt header and target; discard repeated segments",
+      "dimensions": "375x760",
+      "sha256": "58927086ad655e80779e3674c94f649520176cce79abdb35be5aab2a02e0a58b"
+    }
+  ],
+  "summary": {
+    "captureCount": 13,
+    "actualProductPixelFiles": 13,
+    "generatedImageryFiles": 0,
+    "fictionalUiFiles": 0,
+    "transactionBroadcasts": 0,
+    "walletSignatures": 0
+  },
+  "knownLimitation": "The final explorer-page motion shot must be recorded from the exact read-only funding URL during final video capture; no explorer page was fabricated for this preproduction package."
+}

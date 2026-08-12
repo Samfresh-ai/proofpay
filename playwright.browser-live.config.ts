@@ -3,6 +3,9 @@ import { defineConfig } from "@playwright/test";
 const host = "127.0.0.1";
 const port = 3212;
 const baseURL = `http://${host}:${port}`;
+const npmCommand = process.env.npm_execpath
+  ? `"${process.execPath}" "${process.env.npm_execpath}"`
+  : "npm";
 const liveEnvironment = Object.fromEntries(
   Object.entries(process.env).filter((entry): entry is [string, string] => entry[1] !== undefined),
 );
@@ -28,7 +31,7 @@ export default defineConfig({
     video: "off",
   },
   webServer: {
-    command: `/home/samfresh22/.nvm/versions/node/v22.21.1/bin/npm run dev -- --hostname ${host} --port ${port}`,
+    command: `${npmCommand} run dev -- --hostname ${host} --port ${port}`,
     url: `${baseURL}/app`,
     timeout: 360_000,
     reuseExistingServer: false,

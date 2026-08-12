@@ -200,8 +200,8 @@ as an unsigned create-invoice preview; it is not misrepresented as funding evide
 
 ## Rollback procedure
 
-Run Vercel commands from `/home/samfresh22/openclaw-grower-workspace/proofpay`, whose local Vercel
-link identifies project `proofpay-paysmat`.
+Run Vercel commands from the repository root, whose local Vercel link identifies project
+`proofpay-paysmat`.
 
 To restore the immediately previous Production deployment after this release:
 

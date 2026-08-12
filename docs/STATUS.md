@@ -5,9 +5,9 @@ Updated: 2026-08-12
 ## Current state
 
 - Active phase: Phase 0 through Phase 5D complete; Phase 6A and Phase 6B1 remain preserved as
-  historical checkpoints; Phase 6B2 Escrow Flow implementation, validation, Preview, and
-  Production release are complete.
-- Overall decision: `PHASE_6B2_PASS`. Application commit
+  historical checkpoints; Phase 6B2 Escrow Flow implementation and production release are
+  complete; Phase 7A submission freeze validation is in progress.
+- Overall decision: `PHASE_7A_PUBLICATION_PENDING`. Application commit
   `78cfde3f3eeb3025f8eecdc4cb2d3db69f4c3d55` is deployed as Vercel deployment
   `dpl_FAW3WmZqyeRunaxSkFqkPBu1T5Ny` at `https://proofpay.paysmat.xyz`. The exact staged build was
   promoted without rebuilding or changing DNS; anonymous smoke, bounded production logs, and both
@@ -314,7 +314,7 @@ Gate: `PASS`
   matched at 0, 6, 12, and 18 feed decimals.
 - The minimum and maximum supported-domain endpoints completed without overflow or truncation.
   The maximum case produced a `1e20`-atomic payout and `1.1e20`-atomic protected funding amount.
-- `/home/samfresh22/.foundry/bin/forge test --match-contract ProofPayEscrowFuzzTest -vv`: passed
+- `forge test --match-contract ProofPayEscrowFuzzTest -vv`: passed
   seven tests, zero failed, zero skipped. Each fuzz property completed 512 runs.
 - Defects found: none. Production code changes: none.
 
@@ -405,8 +405,8 @@ Gate: `PASS`
 
 ### Final validation
 
-- `/home/samfresh22/.foundry/bin/forge fmt --check`: passed.
-- `/home/samfresh22/.foundry/bin/forge build --force`: passed; 41 files compiled with Solidity
+- `forge fmt --check`: passed.
+- `forge build --force`: passed; 41 files compiled with Solidity
   `0.8.25`.
 - Deterministic suites: 56 passed, zero failed, zero skipped across three suites.
 - Financial fuzz suite: seven passed, zero failed, zero skipped; six properties completed 512 runs
@@ -414,7 +414,7 @@ Gate: `PASS`
 - Stateful invariant suite: six passed, zero failed, zero skipped; 128 runs, depth 32, 4,096 calls
   per invariant, zero handler reverts, with seed
   `0x000000000000000000000000000000000000000000000000000000003b202608`.
-- `/home/samfresh22/.foundry/bin/forge coverage --ir-minimum`: passed all 69 tests. Production
+- `forge coverage --ir-minimum`: passed all 69 tests. Production
   `ProofPayEscrow.sol` coverage is 100% lines (`210/210`), statements (`246/246`), branches
   (`42/42`), and functions (`20/20`). Coverage remains supporting evidence, not an audit.
 - `npm run typecheck`: passed under strict TypeScript settings.
@@ -634,7 +634,7 @@ Gate: `PASS`
 - Direct Codex resumed the preserved Phase 5A work at commit
   `a2c37b453004a193f0d76f3090f851691576527c`; it did not recreate the repository or repeat
   Phases 0–4. The recovery bundle is
-  `/home/samfresh22/proofpay-recovery/phase5a-direct-codex-20260808T154513Z`.
+  an external recovery directory outside the repository.
 - OpenClaw's gateway and liveness watchdog were stopped before implementation. Hermes was not
   started. The existing browser service was left unchanged.
 - The completed interface remains read-only: it has no wallet connection, signature request,
@@ -1195,3 +1195,68 @@ Gate: `PHASE_6B2_PASS`
 - This is automated Coston2 testnet and hosted-interface evidence. It is not a human usability
   study, WCAG conformance, an audit, mainnet readiness, legal escrow, fiat settlement, proof of
   delivery truth, or production-security evidence.
+
+## Phase 7A — Summer Signal submission freeze
+
+Gate: `PUBLICATION_PENDING`
+
+### Release and judge-path audit
+
+- Phase 7A began from clean `main` commit
+  `8f9958ebc3a615cc7f38024484caef6412ea8df7`. Production remains exact READY deployment
+  `dpl_FAW3WmZqyeRunaxSkFqkPBu1T5Ny`, built from application commit `78cfde3f`, at
+  `https://proofpay.paysmat.xyz`; no deployment, DNS, contract, or chain mutation was performed.
+- A fresh unauthenticated structured browser audit covered `/`, `/app`, invoices `1` and `2`,
+  receipts `1` and `2`, unknown invoice and unavailable receipt states, plus `390 × 844` landing
+  and receipt views. All routes retained one main heading, canonical metadata, visible testnet and
+  non-production limitations, no horizontal overflow, and no browser warning or error. No wallet
+  provider, signature request, send request, or broadcast was observed.
+- The judge path completed in `193.359` automation-inclusive seconds: landing explanation,
+  illustrative price change, real invoice `2`, permanent receipt, expanded lifecycle events, one
+  successful Coston2 explorer transaction, and return to the dominant `/app` creation action.
+  `docs/JUDGE_OBSERVATION.md` records five semantic clicks, one direct route navigation, measured
+  delays, and the minor landing-receipt/invoice navigation friction. This is an automated product
+  audit, not human-usability evidence.
+
+### Fresh local and chain validation
+
+- Node `22.21.1` passed lint with zero warnings, strict typechecking, `65/65` unit tests in seven
+  files, the production build, `27/27` deterministic one-worker browser tests, one production
+  hydration test, exact browser-secret scanning, and `git diff --check`. An isolated live-read-only
+  browser suite passed `4/4` tests for the landing, invoices, receipts, accessibility, responsive
+  presentation, and expanded evidence without changing protected screenshots.
+- Foundry `1.5.1-stable` passed `forge fmt --check`, a forced Solidity `0.8.25` build, and all `69`
+  tests: `56` deterministic tests, seven financial-fuzz tests including six properties at `512`
+  runs each, and six stateful invariants at `128` runs and depth `32` (`4,096` calls per invariant).
+- Invoice `1` passed all five current read-only reconciliation checks at pinned block `33976029`:
+  lock `5.299945 FXRP`, payout `4.818748`, refund `0.481197`, and zero active liabilities and
+  contract balance. The legacy verifier still stops only at its known stale comparison between
+  current party balances and the historical pre-invoice-2 snapshot; that mutable comparison is not
+  represented as a current pass or a settlement failure.
+- Invoice `2` passed all seven public-only isolated-verifier checks at pinned block `33976062`.
+  Its four input hashes remained exactly
+  `bd8e979a…829182904`, `aa672be9…aefe36`, `d7dec920…5474c20`, and
+  `da524721…ded5b8`; the temporary verifier output was removed. No live-flow, wallet, signing, or
+  transaction-capable script ran.
+
+### Public-source safety and package
+
+- The working tree and every object reachable from all Git refs were inspected for private keys,
+  mnemonics, tokens, cookies, browser profiles, environment files, wallet-secret files, recovery
+  archives, credential assignments, and high-confidence secret formats. None is tracked or
+  reachable. The ignored local `.env.local`, `.vercel/`, browser state, and owner-only wallet file
+  remain outside Git. Historical absolute pathname strings in protected Coston2/probe evidence are
+  non-secret provenance strings; executable configs and current operational prose were made
+  portable without rewriting hashed chain evidence or Git history.
+- A root MIT license, security policy, exact upstream/dependency attribution, judge README,
+  DoraHacks draft, judging matrix, release checklist, and judge observation are complete. The
+  mandatory evidence-first video package contains five production documents and 13 real-product
+  PNG captures; its 02:15 plan maps every outward claim to the claims ledger. No final video was
+  rendered or uploaded.
+- `artifacts/submission/MANIFEST.json` binds six actual-product media candidates: a `1200 × 630`
+  cover, landing, app, receipt, expanded receipt, and architecture image. Generated and fictional
+  imagery counts are zero; all transforms, source hashes, dimensions, timestamps or blocks, and
+  intended positions are recorded.
+- Final Phase 7A PASS remains contingent on creating the authorized public repository, pushing the
+  complete reviewed history, confirming the annotated release tag, and passing public-clone,
+  clean-install, README-command, final link, and clean-tree checks.
