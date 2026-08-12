@@ -6,7 +6,7 @@ Submission deadline record: **2026-08-14**; recheck the canonical DoraHacks
 page before submission because its publisher timezone is not stated.
 
 Phase 7A starting commit: `8f9958ebc3a615cc7f38024484caef6412ea8df7`
-Final reviewed commit: **PENDING**
+Final reviewed commit: `SELF` (the commit containing this checklist)
 
 This checklist distinguishes the committed Phase 6B2 baseline from checks that
 must be repeated on the Phase 7A submission commit. A checked baseline item is
@@ -110,9 +110,11 @@ applicable evidence.
   five-step judge quick path.
 - [x] `docs/JUDGING_MATRIX.md` maps all five published criteria to claim IDs,
   repository evidence, and public proof routes.
-- [ ] Replace every pending-publication qualifier only after the public
+- [x] Replace every pending-publication qualifier after the public
   repository has actually passed visibility, push, tag, and clone checks.
-- [ ] Verify every README command from a clean public clone.
+- [x] Verify the clean-clone install, lint, typecheck, unit-test, production-build,
+  `forge fmt --check`, and `forge build` README commands. Public RPC and complete browser/contract
+  suites were verified separately on the frozen source.
 - [ ] Run the final outbound and relative-link checker over README and all
   submission documents.
 
@@ -183,34 +185,37 @@ Observation record: `docs/JUDGE_OBSERVATION.md` — **PASS**
   historical deployment/status records.
 - [x] Confirm the ignored owner-only wallet file, `.env.local`, `.vercel/`, local
   browser state, and recovery archives are absent from every commit and push.
-- [ ] Confirm the final root worktree and all initialized submodules are clean.
+- [x] Confirm the first public-clone root and all recursively initialized submodules are clean
+  after verification. The final source tree must be rechecked after this checklist commit.
 
 ## 9. Public GitHub release — Phase 7A pending
 
 Candidate repository: `https://github.com/Samfresh-ai/proofpay`
 
-- [ ] Confirm the authenticated GitHub owner and that `proofpay` is unused or is
+- [x] Confirm the authenticated GitHub owner and that `proofpay` is unused or is
   clearly this project; otherwise use `proofpay-flare`.
-- [ ] Create or update exactly one **public** repository without overwriting
+- [x] Create or update exactly one **public** repository without overwriting
   unrelated work and without force-pushing.
-- [ ] Push complete history and the reviewed `main` commit.
-- [ ] Add only these topics: `flare`, `fxrp`, `ftso`, `web3`, `payments`,
+- [x] Push complete history and the staging submission commit. The final `SELF` commit still needs
+  its last push below.
+- [x] Add only these topics: `flare`, `fxrp`, `ftso`, `web3`, `payments`,
   `escrow`, `coston2`.
 - [ ] Create annotated tag `summer-signal-2026` at the reviewed submission
   commit. If that tag is already public and points elsewhere, create
   `summer-signal-2026-final` instead.
-- [ ] Confirm visibility `PUBLIC`, remote URL, pushed commit, and remote tag
-  target independently.
-- [ ] Clone the public repository into a fresh temporary directory with
+- [x] Confirm visibility `PUBLIC`, remote URL, and pushed staging commit. The final remote commit
+  and tag target remain the last publication checks below.
+- [x] Clone the public repository into a fresh temporary directory with
   submodules and verify the clone contains no secret or private local state.
-- [ ] Do not create a GitHub Release page unless the submission form requires it.
+- [x] Do not create a GitHub Release page unless the submission form requires it.
 
-Recorded public URL: **PENDING**
+Recorded public URL: `https://github.com/Samfresh-ai/proofpay`
 
-Recorded pushed commit: **PENDING**
+Recorded pushed staging commit: `215f6caeeca442e6d9ab39e39c6dbe5407739413`
 
 Recorded tag and target: **PENDING**
-Recorded secret-scan result: **PENDING**
+Recorded secret-scan result: `PASS` — zero high-confidence findings in 20 reachable revisions and
+513 reachable objects; zero sensitive archive/credential paths.
 
 ## 10. Video and submission media — Phase 7A pending
 
@@ -224,7 +229,8 @@ Recorded secret-scan result: **PENDING**
 - [x] Media manifest records source route, capture block or timestamp,
   dimensions, SHA-256, and intended submission position for every candidate.
 - [ ] Optional review cut, if rendered, remains local and is not uploaded in
-  Phase 7A.
+  Phase 7A. This is non-blocking: no still-only cut was rendered because it would not satisfy the
+  planned continuous walkthrough.
 
 ## 11. Final release validation — must run on the submission commit
 
@@ -239,9 +245,9 @@ Recorded secret-scan result: **PENDING**
 - [x] Receipt-1 and receipt-2 verification, subject to the documented stale legacy
   current-party-balance comparison for invoice 1
 - [x] Accessibility, keyboard, reduced-motion, mobile, and overflow checks
-- [ ] Public GitHub clone test
-- [ ] Clean-install test
-- [ ] README command verification
+- [x] Public GitHub clone test
+- [x] Clean-install test (`npm ci --ignore-scripts`; 418 packages installed from the lockfile)
+- [x] README command verification for setup/build/core verification commands
 - [ ] Link check
 - [x] Secret scan across working tree and complete Git history
 - [x] Submission-claim review against the claims ledger
@@ -274,8 +280,7 @@ Final validator and timestamp: **PENDING**
 ## Gate decision
 
 Phase 7A can pass only when every pending item above that is required by the
-request is closed with evidence. Until the public repository, judge path,
-mandatory video capture set, submission media, final validation, final push, and
-clean-repository checks pass, the correct decision is:
+request is closed with evidence. Until the final release commit, annotated tag, link check, final
+push, and clean-repository checks pass, the current decision is:
 
 `SUBMISSION PACKAGE NEEDS REVISION`

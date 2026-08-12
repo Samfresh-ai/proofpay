@@ -30,8 +30,7 @@ before the connected wallet is asked to approve or send them.
 - Network: Flare Testnet Coston2, chain ID `114`
 - Current production deployment: `dpl_FAW3WmZqyeRunaxSkFqkPBu1T5Ny`
 - Deployed application commit: `78cfde3f3eeb3025f8eecdc4cb2d3db69f4c3d55`
-- Public repository target: `https://github.com/Samfresh-ai/proofpay` — publication and clone
-  verification remain release-checklist gates until confirmed.
+- Public repository: [github.com/Samfresh-ai/proofpay](https://github.com/Samfresh-ai/proofpay)
 
 The landing-page scenarios are explicitly illustrative and send no transaction.
 Invoices and receipts below are read from real, already-settled Coston2 records.

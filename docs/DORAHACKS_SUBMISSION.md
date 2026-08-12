@@ -111,9 +111,7 @@ materially adapted. Exact attribution is in `docs/UPSTREAM.md`.
 ## Technical evidence
 
 - Production application: [https://proofpay.paysmat.xyz](https://proofpay.paysmat.xyz)
-- Public GitHub repository: `https://github.com/Samfresh-ai/proofpay` — **pending
-  publication, visibility, tag, clean-clone, and link confirmation before this
-  draft may be submitted**
+- Public GitHub repository: [https://github.com/Samfresh-ai/proofpay](https://github.com/Samfresh-ai/proofpay)
 - Verified Coston2 contract: [`0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21`](https://coston2-explorer.flare.network/address/0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21)
 - Contract deployment: [`0xa223…f93a`](https://coston2-explorer.flare.network/tx/0xa223570423d92e6dc972452ff00da35c2d59d5c0c4c9f3a971e7cd6dabf5f93a)
 - Invoice 1: [live invoice](https://proofpay.paysmat.xyz/invoice/1) · [decoded receipt](https://proofpay.paysmat.xyz/receipt/1) · [fund](https://coston2-explorer.flare.network/tx/0x48e8ffcc165c61c25efd2e91eef8aa550441d69b6e2cf5c8769affd24acd5e83) · [release](https://coston2-explorer.flare.network/tx/0xe3b7e5c5e965a8151222ef92febd1be5fb8b5913b2080e5faa528e5b94f141ee)
