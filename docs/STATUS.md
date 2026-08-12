@@ -6,8 +6,8 @@ Updated: 2026-08-12
 
 - Active phase: Phase 0 through Phase 5D complete; Phase 6A and Phase 6B1 remain preserved as
   historical checkpoints; Phase 6B2 Escrow Flow implementation and production release are
-  complete; Phase 7A submission freeze validation is in progress.
-- Overall decision: `PHASE_7A_PUBLICATION_PENDING`. Application commit
+  complete; Phase 7A submission freeze and public-source release are complete.
+- Overall decision: `PHASE_7A_PASS`. Application commit
   `78cfde3f3eeb3025f8eecdc4cb2d3db69f4c3d55` is deployed as Vercel deployment
   `dpl_FAW3WmZqyeRunaxSkFqkPBu1T5Ny` at `https://proofpay.paysmat.xyz`. The exact staged build was
   promoted without rebuilding or changing DNS; anonymous smoke, bounded production logs, and both
@@ -1198,7 +1198,7 @@ Gate: `PHASE_6B2_PASS`
 
 ## Phase 7A — Summer Signal submission freeze
 
-Gate: `PUBLICATION_PENDING`
+Gate: `PASS`
 
 ### Release and judge-path audit
 
@@ -1257,6 +1257,22 @@ Gate: `PUBLICATION_PENDING`
   cover, landing, app, receipt, expanded receipt, and architecture image. Generated and fictional
   imagery counts are zero; all transforms, source hashes, dimensions, timestamps or blocks, and
   intended positions are recorded.
-- Final Phase 7A PASS remains contingent on creating the authorized public repository, pushing the
-  complete reviewed history, confirming the annotated release tag, and passing public-clone,
-  clean-install, README-command, final link, and clean-tree checks.
+- The authorized public repository is `https://github.com/Samfresh-ai/proofpay`, visibility
+  `PUBLIC`, with exactly the topics `flare`, `fxrp`, `ftso`, `web3`, `payments`, `escrow`, and
+  `coston2`. Complete history and the final reviewed `main` commit are public. The first annotated
+  `summer-signal-2026` tag was published during finalization before the checklist evidence closed;
+  it is preserved and not moved. Per the release rule, `summer-signal-2026-final` identifies this
+  final `SELF` evidence commit.
+- A full public clone with recursive submodules passed before finalization. It contained no ignored
+  secret state; clean install added 418 lockfile packages, and lint, typecheck, all 65 unit tests,
+  production build, Foundry format, and Foundry build passed. A fresh shallow clone of the final
+  public tag independently matched the intended commit and all six recursively initialized
+  submodule pins. Transient HTTP/2 clone failures were retried safely over HTTP/1.1; no history was
+  rewritten or force-pushed.
+- The final link audit checked 26 unique HTTPS destinations and one relative Markdown link. Every
+  destination returned HTTP 200 after bounded retry. Production dependencies have zero npm audit
+  findings; the dev-only toolchain has one transitive high-severity `js-yaml` CPU-consumption
+  advisory with a fix available. It is not in the production dependency set and was not changed in
+  this documentation-only freeze.
+- Phase 7A requested zero wallet signatures and broadcast zero blockchain transactions. No final
+  video was published and no DoraHacks entry was submitted.

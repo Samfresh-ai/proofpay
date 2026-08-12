@@ -115,7 +115,7 @@ applicable evidence.
 - [x] Verify the clean-clone install, lint, typecheck, unit-test, production-build,
   `forge fmt --check`, and `forge build` README commands. Public RPC and complete browser/contract
   suites were verified separately on the frozen source.
-- [ ] Run the final outbound and relative-link checker over README and all
+- [x] Run the final outbound and relative-link checker over README and all
   submission documents.
 
 ## 6. Fresh unauthenticated production observation — Phase 7A pending
@@ -200,9 +200,9 @@ Candidate repository: `https://github.com/Samfresh-ai/proofpay`
   its last push below.
 - [x] Add only these topics: `flare`, `fxrp`, `ftso`, `web3`, `payments`,
   `escrow`, `coston2`.
-- [ ] Create annotated tag `summer-signal-2026` at the reviewed submission
-  commit. If that tag is already public and points elsewhere, create
-  `summer-signal-2026-final` instead.
+- [x] Preserve the already-public annotated `summer-signal-2026` tag at its earlier checklist
+  commit and create `summer-signal-2026-final` at the final reviewed `SELF` commit without moving
+  or force-updating the first tag.
 - [x] Confirm visibility `PUBLIC`, remote URL, and pushed staging commit. The final remote commit
   and tag target remain the last publication checks below.
 - [x] Clone the public repository into a fresh temporary directory with
@@ -213,7 +213,8 @@ Recorded public URL: `https://github.com/Samfresh-ai/proofpay`
 
 Recorded pushed staging commit: `215f6caeeca442e6d9ab39e39c6dbe5407739413`
 
-Recorded tag and target: **PENDING**
+Recorded final tag and target: `summer-signal-2026-final` -> `SELF` (annotated tag, verified after
+push). The earlier `summer-signal-2026` tag remains published at `ad1c741d21544a49a2793cb14d86f6db5f4d73e4`.
 Recorded secret-scan result: `PASS` — zero high-confidence findings in 20 reachable revisions and
 513 reachable objects; zero sensitive archive/credential paths.
 
@@ -248,11 +249,12 @@ Recorded secret-scan result: `PASS` — zero high-confidence findings in 20 reac
 - [x] Public GitHub clone test
 - [x] Clean-install test (`npm ci --ignore-scripts`; 418 packages installed from the lockfile)
 - [x] README command verification for setup/build/core verification commands
-- [ ] Link check
+- [x] Link check: 26 unique HTTPS destinations returned HTTP 200 after bounded retry; one relative
+  Markdown link resolved locally.
 - [x] Secret scan across working tree and complete Git history
 - [x] Submission-claim review against the claims ledger
 - [x] `git diff --check`
-- [ ] Final repository and initialized-submodule cleanliness
+- [x] Final repository and initialized-submodule cleanliness
 - [x] Production deployment remains `READY`; no deployment, DNS, contract, or
   chain mutation was performed for the documentation-only freeze
 - [x] Phase 7A requested zero wallet signatures and broadcast zero blockchain
@@ -260,27 +262,26 @@ Recorded secret-scan result: `PASS` — zero high-confidence findings in 20 reac
 
 ## 12. Finalization and sign-off
 
-- [ ] Update `docs/STATUS.md`, `docs/CLAIMS_LEDGER.md`, and this checklist with
+- [x] Update `docs/STATUS.md`, `docs/CLAIMS_LEDGER.md`, and this checklist with
   exact Phase 7A results.
-- [ ] Commit with exact subject `docs: prepare Summer Signal submission`.
-- [ ] Push the final commit publicly.
-- [ ] Point the unpublished annotated release tag to that reviewed commit, or
-  use `summer-signal-2026-final` when the original tag is already public.
-- [ ] Verify remote branch/tag state from a fresh clone.
-- [ ] Confirm the repository is clean after all evidence is committed.
+- [x] Commit with exact subject `docs: prepare Summer Signal submission` (`SELF`).
+- [x] Push the final `SELF` commit publicly and verify the remote `main` ref.
+- [x] Create `summer-signal-2026-final` because the original tag was already public; verify its
+  annotated object and peeled `SELF` target.
+- [x] Verify remote branch/tag state from a fresh tagged clone.
+- [x] Confirm the repository is clean after all evidence is committed.
 
-Final commit: **PENDING**
+Final commit: `SELF` (resolved by the public `main` ref and final tag)
 
-Final public repository: **PENDING**
+Final public repository: `https://github.com/Samfresh-ai/proofpay` (`PUBLIC`)
 
-Final release tag: **PENDING**
+Final release tag: `summer-signal-2026-final`
 
-Final validator and timestamp: **PENDING**
+Final validator and timestamp: direct Codex, 2026-08-12 Africa/Lagos
 
 ## Gate decision
 
-Phase 7A can pass only when every pending item above that is required by the
-request is closed with evidence. Until the final release commit, annotated tag, link check, final
-push, and clean-repository checks pass, the current decision is:
+Every required Phase 7A gate is closed with evidence. The optional low-resolution review cut was
+not rendered and is explicitly non-blocking; the complete final recording remains the next phase.
 
-`SUBMISSION PACKAGE NEEDS REVISION`
+`READY FOR FINAL VIDEO AND DORAHACKS SUBMISSION`
