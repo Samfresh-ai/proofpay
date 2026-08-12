@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
-  "phase": "6A",
-  "status": "PUBLIC_DEPLOYMENT_NEEDS_REVISION",
-  "applicationCommit": "903c36bf8d0bf172c1aaf113b46db375c4e210c7",
+  "phase": "6B2",
+  "status": "PHASE_6B2_PASS",
+  "baseCommit": "330cafc7e743cdef821279c16d6454c570ec9d58",
+  "applicationCommit": "78cfde3f3eeb3025f8eecdc4cb2d3db69f4c3d55",
   "evidenceCommit": "SELF",
   "evidenceCommitSemantics": "SELF means the Git commit containing this file is the evidence commit; report that commit's actual hash externally after it is created.",
   "vercel": {
@@ -12,6 +13,54 @@
       "NEXT_PUBLIC_SITE_URL"
     ],
     "deployments": {
+      "phase6B2Preview": {
+        "url": "https://proofpay-paysmat-75o4mga27-adamolekuntemitope4-2758s-projects.vercel.app",
+        "deploymentId": "dpl_MFtrM77aWwm3cmhaCapd8TP4qrKF",
+        "createdAt": "2026-08-12T15:13:13.993Z",
+        "readyAt": "2026-08-12T15:13:40.594Z",
+        "target": "preview",
+        "state": "READY",
+        "applicationCommit": "78cfde3f3eeb3025f8eecdc4cb2d3db69f4c3d55",
+        "role": "phase-6b2-protected-preview",
+        "smoke": {
+          "status": "PASS",
+          "access": "protected Vercel deployment with an automation bypass",
+          "routesChecked": 8,
+          "responsiveChecks": 6,
+          "axeSeriousOrCriticalFindings": 0,
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "signingCalls": 0,
+          "sendCalls": 0,
+          "broadcastCalls": 0
+        }
+      },
+      "phase6B2Production": {
+        "url": "https://proofpay-paysmat-jidia45ao-adamolekuntemitope4-2758s-projects.vercel.app",
+        "deploymentId": "dpl_FAW3WmZqyeRunaxSkFqkPBu1T5Ny",
+        "createdAt": "2026-08-12T15:25:41.947Z",
+        "readyAt": "2026-08-12T15:26:08.052Z",
+        "target": "production",
+        "state": "READY",
+        "applicationCommit": "78cfde3f3eeb3025f8eecdc4cb2d3db69f4c3d55",
+        "role": "current-promoted-production",
+        "promotionStatus": "PROMOTED",
+        "promotionObservedAtOrAfter": "2026-08-12T15:30:23Z",
+        "promotionVerification": "Vercel promotion mapped the canonical project to this exact READY deployment without a rebuild or DNS change.",
+        "smoke": {
+          "status": "PASS",
+          "access": "protected staged Production deployment with an automation bypass before promotion",
+          "canonicalMetadataOrigin": "https://proofpay.paysmat.xyz",
+          "routesChecked": 8,
+          "responsiveChecks": 6,
+          "axeSeriousOrCriticalFindings": 0,
+          "consoleErrors": 0,
+          "pageErrors": 0,
+          "signingCalls": 0,
+          "sendCalls": 0,
+          "broadcastCalls": 0
+        }
+      },
       "bootstrapProduction": {
         "url": "https://proofpay-paysmat-kqh13h9eq-adamolekuntemitope4-2758s-projects.vercel.app",
         "deploymentId": "dpl_2teLezcnMTwmSg53q7tXFk2fAEG6",
@@ -26,6 +75,7 @@
         "createdAt": "2026-08-09T23:17:41.809Z",
         "target": "preview",
         "state": "READY",
+        "role": "historical-phase-6a-preview",
         "applicationCommitAtDeployment": "326e827fb06b68028ea4f05091fce89d6d1aef3d",
         "applicationCommitNote": "The corrected application commit changes only a Vercel-excluded metadata test fixture; the Preview runtime upload is unchanged.",
         "smoke": {
@@ -89,7 +139,8 @@
         "target": "production",
         "state": "READY",
         "applicationCommit": "903c36bf8d0bf172c1aaf113b46db375c4e210c7",
-        "promotionStatus": "PROMOTED",
+        "promotionStatus": "SUPERSEDED_BY_PHASE_6B2_ROLLBACK_READY",
+        "role": "known-good-phase-6a-rollback",
         "promotionVerification": "Vercel CLI promotion status maps project proofpay-paysmat to deployment dpl_HYzfUxvqqiLijsY2vCaNMXP268V9 without a rebuild.",
         "smoke": {
           "status": "PASS",
@@ -116,21 +167,42 @@
   "validation": {
     "localGate": {
       "status": "PASS",
-      "unitTests": 62,
-      "simulatedBrowserTests": 16,
+      "unitTests": 65,
+      "simulatedBrowserTests": 27,
       "productionHydrationTests": 1,
-      "liveReadOnlyBrowserTests": 3,
+      "visualCaptureTests": 1,
       "checks": [
         "lint",
         "TypeScript typecheck",
         "production build",
         "accessibility and responsive assertions",
         "browser secret scan",
-        "Vercel upload dry run",
+        "17-capture Escrow Flow visual proof",
         "protected historical evidence",
         "clean submodules",
         "git diff --check"
       ]
+    },
+    "visualEvidence": {
+      "status": "PASS",
+      "manifestPath": "artifacts/escrow-flow-final/visual-proof.json",
+      "captureWindowUtc": {
+        "startedAt": "2026-08-12T15:37:32.110Z",
+        "completedAt": "2026-08-12T15:39:51.329Z"
+      },
+      "sourceHead": "78cfde3f3eeb3025f8eecdc4cb2d3db69f4c3d55",
+      "captureCount": 17,
+      "pngCount": 17,
+      "totalBytes": 3077898,
+      "failures": 0,
+      "signatureRequests": 0,
+      "sendRequests": 0,
+      "actualSignatures": 0,
+      "actualSends": 0,
+      "broadcasts": 0,
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "protectedHistoricalArtifactsUnchanged": true
     },
     "preDeploymentReconciliation": {
       "invoice1": {
@@ -146,14 +218,16 @@
     "postDeploymentReconciliation": {
       "invoice1": {
         "status": "PASS",
-        "blockNumber": "33845120",
+        "blockNumber": "33973183",
         "invoiceStatus": "RELEASED",
         "activeLiabilitiesAtomic": "0",
-        "contractFxrpBalanceAtomic": "0"
+        "contractFxrpBalanceAtomic": "0",
+        "checksPassed": 5,
+        "note": "Current receipt reconciliation passes exact lifecycle events, current invoice/event agreement, conservation, solvency, and pinned party-balance reads. The protected Phase 4B verifier's separate comparison of current party balances with its historical snapshot is stale because invoice 2 later changed the same wallets, so that mutable comparison is not used as a current invariant."
       },
       "invoice2": {
         "status": "PASS",
-        "blockNumber": "33845158",
+        "blockNumber": "33973412",
         "invoiceStatus": "RELEASED",
         "activeLiabilitiesAtomic": "0",
         "contractFxrpBalanceAtomic": "0",
@@ -329,10 +403,11 @@
         "httpStatus": 308,
         "location": "https://proofpay.paysmat.xyz/"
       },
+      "rootStatus": 200,
       "appStatus": 200,
       "strictTransportSecurity": true
     },
-    "publicSmoke": {
+    "phase6APublicSmoke": {
       "status": "PASS",
       "target": "https://proofpay.paysmat.xyz",
       "deploymentId": "dpl_HYzfUxvqqiLijsY2vCaNMXP268V9",
@@ -394,7 +469,31 @@
       },
       "visualReview": "PASS"
     },
-    "publicCoston2Reconciliation": {
+    "publicSmoke": {
+      "status": "PASS",
+      "target": "https://proofpay.paysmat.xyz",
+      "deploymentId": "dpl_FAW3WmZqyeRunaxSkFqkPBu1T5Ny",
+      "observedAfterPromotionAtOrAfter": "2026-08-12T15:30:23Z",
+      "access": "anonymous custom domain; no Vercel automation bypass",
+      "routesChecked": 8,
+      "responsiveChecks": 6,
+      "axeSeriousOrCriticalFindings": 0,
+      "consoleErrors": 0,
+      "pageErrors": 0,
+      "signingCalls": 0,
+      "sendCalls": 0,
+      "broadcastCalls": 0,
+      "runtimeLogReview": {
+        "status": "PASS",
+        "windowStart": "2026-08-12T15:30:23Z",
+        "applicationErrorEntries": 0,
+        "fatalEntries": 0,
+        "http5xxEntries": 0,
+        "requestSampleEntries": 1000,
+        "note": "The unfiltered sample reached the CLI cap. It is bounded evidence of the observed window, not a complete count of production traffic."
+      }
+    },
+    "phase6APublicCoston2Reconciliation": {
       "status": "PASS",
       "invoice1BlockNumber": "33845120",
       "invoice2BlockNumber": "33845158",
@@ -405,15 +504,36 @@
       "aggregateActiveLiabilitiesAtomic": "0",
       "contractFxrpBalanceAtomic": "0",
       "broadcastCalls": 0
+    },
+    "publicCoston2Reconciliation": {
+      "status": "PASS",
+      "invoice1": {
+        "blockNumber": "33973183",
+        "checksPassed": 5,
+        "invoiceStatus": "RELEASED",
+        "note": "Current receipt reconciliation passes exact lifecycle events, current invoice/event agreement, conservation, solvency, and pinned party-balance reads; the legacy Phase 4B comparison of current party balances with its historical snapshot is stale after invoice 2."
+      },
+      "invoice2": {
+        "blockNumber": "33973412",
+        "checksPassed": 7,
+        "invoiceStatus": "RELEASED",
+        "execution": "public-only verifier from an isolated temporary working directory"
+      },
+      "aggregateActiveLiabilitiesAtomic": "0",
+      "contractFxrpBalanceAtomic": "0",
+      "broadcastCalls": 0,
+      "protectedArtifactsUnchanged": true
     }
   },
   "rollback": {
     "workingDirectory": "/home/samfresh22/openclaw-grower-workspace/proofpay",
-    "stagedDeploymentUrl": "https://proofpay-paysmat-6rkpku49p-adamolekuntemitope4-2758s-projects.vercel.app",
-    "rollbackCurrentProductionCommand": "npx --yes vercel@58.9.0 rollback --yes",
+    "currentDeploymentId": "dpl_FAW3WmZqyeRunaxSkFqkPBu1T5Ny",
+    "currentDeploymentUrl": "https://proofpay-paysmat-jidia45ao-adamolekuntemitope4-2758s-projects.vercel.app",
+    "knownGoodDeploymentId": "dpl_HYzfUxvqqiLijsY2vCaNMXP268V9",
+    "knownGoodDeploymentUrl": "https://proofpay-paysmat-6rkpku49p-adamolekuntemitope4-2758s-projects.vercel.app",
+    "rollbackCurrentProductionCommand": "npx --yes vercel@58.9.0 rollback dpl_HYzfUxvqqiLijsY2vCaNMXP268V9 --yes --timeout 5m",
     "rollbackStatusCommand": "npx --yes vercel@58.9.0 rollback status proofpay-paysmat",
-    "restorePriorBootstrapDeploymentCommand": "npx --yes vercel@58.9.0 promote https://proofpay-paysmat-kqh13h9eq-adamolekuntemitope4-2758s-projects.vercel.app --yes",
-    "rePromoteKnownGoodCommand": "npx --yes vercel@58.9.0 promote https://proofpay-paysmat-6rkpku49p-adamolekuntemitope4-2758s-projects.vercel.app --yes",
+    "rePromoteCurrentReleaseCommand": "npx --yes vercel@58.9.0 promote https://proofpay-paysmat-jidia45ao-adamolekuntemitope4-2758s-projects.vercel.app --yes",
     "promotionStatusCommand": "npx --yes vercel@58.9.0 promote status proofpay-paysmat",
     "verifyCanonicalCommand": "npx --yes vercel@58.9.0 inspect https://proofpay.paysmat.xyz",
     "detachCustomDomainCommand": "npx --yes vercel@58.9.0 domains rm proofpay.paysmat.xyz --yes"
@@ -421,8 +541,11 @@
   "knownLimitations": [
     "The generated Vercel deployment URLs are protected; passing their bypass-backed smoke checks does not prove anonymous public access.",
     "Vercel automatically classified the first project deployment as production during project bootstrap even though --prod was not requested. The first staged candidate is also retained as superseded history because it compiled the owner's corrected-away .com canonical origin; neither historical deployment is the intended Phase 6A candidate.",
-    "No public funding-intent screenshot exists because both existing public invoices are terminal and Phase 6A forbids creating or broadcasting a new on-chain invoice. A safe create-invoice intent was simulated without signing or broadcasting, and funding-role behavior remains covered by deterministic tests rather than a public terminal-invoice flow.",
+    "The historical Phase 6A public funding-intent screenshot gap remains: both existing public invoices are terminal, and producing that evidence would have required creating and broadcasting a new on-chain invoice. Phase 6B2 deterministic funding fixtures stop before the final wallet action and are not represented as live public evidence.",
+    "The 1,000-record production-log review is a bounded sample beginning at 2026-08-12T15:30:23Z, not a complete traffic count.",
+    "The 17 Phase 6B2 captures and automated accessibility checks do not prove human usability or WCAG conformance.",
+    "The protected Phase 4B invoice-1 verifier compares current party balances with a historical snapshot that became stale after invoice 2 changed the same wallets. Current invoice-1 evidence therefore uses five receipt-reconciliation checks rather than claiming that legacy script passes end to end.",
     "The corrected pre-mutation evidence establishes that the ProofPay host did not exist. Unrelated DNS preservation is supported by the single scoped Cloudflare create action rather than a complete pre-change export of the full zone.",
-    "ProofPay uses Coston2 test assets and is not audited, legal escrow, or fiat escrow."
+    "ProofPay uses Coston2 test assets and is not audited, mainnet-ready, legal escrow, fiat escrow, or production-security evidence. Receipt commitments prove byte integrity, not delivery truth or quality."
   ]
 }

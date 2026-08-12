@@ -1,27 +1,23 @@
 # ProofPay durable status
 
-Updated: 2026-08-10
+Updated: 2026-08-12
 
 ## Current state
 
-- Active phase: Phase 0 through Phase 5D complete; Phase 6A public deployment is live with one
-  explicit hosted funding-flow evidence gap; Phase 6B1 Signal Ledger implementation, local
-  validation, and its single protected non-production Preview are complete.
-- Overall decision: `PHASE_6B1_PASS`. The Phase 6A historical gate remains
-  `PUBLIC_DEPLOYMENT_NEEDS_REVISION`. Application commit
-  `903c36bf8d0bf172c1aaf113b46db375c4e210c7` is deployed as Vercel deployment
-  `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9` at `https://proofpay.paysmat.xyz`. DNS, HTTPS, anonymous
-  routes, production smoke, logs, and both read-only invoice reconciliations pass. The requested
-  hosted client funding-role quote and funding-intent screenshot remain impossible to prove from
-  the two terminal invoices without a prohibited broadcast. Phase 6B1 implementation commit
-  `f43dcb886265722193f35a60e38cb7fce5ca7fe1` is staged only at protected Preview deployment
-  `dpl_zQ9sneHYfRMPimFJJSKBSs4W8sCF`; it has not changed the production deployment or canonical
-  domain.
-- Current production UI: `/app`, `/invoice/[id]`, and `/receipt/[id]` provide role-aware wallet
-  action preparation and verified read-only settlement records; `/` redirects to `/app`. The
-  Phase 6B1 Preview adds a real landing page and Signal Ledger product
-  hierarchy while preserving contract reads, wallet actions, journal behavior, and receipt
-  evidence. It is protected and has no production or custom-domain alias.
+- Active phase: Phase 0 through Phase 5D complete; Phase 6A and Phase 6B1 remain preserved as
+  historical checkpoints; Phase 6B2 Escrow Flow implementation, validation, Preview, and
+  Production release are complete.
+- Overall decision: `PHASE_6B2_PASS`. Application commit
+  `78cfde3f3eeb3025f8eecdc4cb2d3db69f4c3d55` is deployed as Vercel deployment
+  `dpl_FAW3WmZqyeRunaxSkFqkPBu1T5Ny` at `https://proofpay.paysmat.xyz`. The exact staged build was
+  promoted without rebuilding or changing DNS; anonymous smoke, bounded production logs, and both
+  current read-only invoice reconciliations pass. Phase 6A application commit `903c36b` and
+  deployment `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9` remain the known-good rollback. Phase 6B1 commit
+  `f43dcb8` and Preview `dpl_zQ9sneHYfRMPimFJJSKBSs4W8sCF` remain historical Preview evidence.
+- Current production UI: `/` presents the Escrow Flow landing and its illustrative USD agreement
+  to FXRP-lock mechanism. `/app`, `/invoice/[id]`, and `/receipt/[id]` preserve role-aware wallet
+  preparation, fail-closed live reads, terminal payout/refund hierarchy, and verified decoded
+  settlement records.
 - Escrow contract: core implemented, fuzzed, statefully invariant-tested, deployed to
   Coston2, and source-verified; not audited or claimed production-ready.
 - Foundry: pinned production contract, deterministic mocks, 56 Phase 3A unit tests, seven passing
@@ -1085,9 +1081,9 @@ Gate: `PHASE_6B1_PASS`
 - Contract code and deployment, Coston2 addresses, lifecycle state, wallet-action policy, quote and
   approval rules, signing/broadcast behavior, journal reconciliation, evidence commitments,
   verified receipt locators, and protected historical artifacts remain outside the change scope.
-- The current production deployment remains `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9`, and the current
-  canonical domain remains `https://proofpay.paysmat.xyz`. No production promotion, DNS change,
-  domain change, production alias, or contract transaction has been performed.
+- At the Phase 6B1 checkpoint, production remained `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9` at
+  `https://proofpay.paysmat.xyz`; that phase performed no promotion, DNS or domain change,
+  production alias, or contract transaction.
 
 ### Local and Preview evidence
 
@@ -1126,7 +1122,76 @@ Gate: `PHASE_6B1_PASS`
   independent browser pass covered all required routes and structural accessibility at `320` and
   `1440` CSS pixels.
 - This protected Preview evidence does not prove anonymous access, active-live-invoice behavior,
-  human usability, or WCAG conformance. The production deployment and canonical domain remain
-  unchanged, and no promotion, DNS change, production alias, or contract transaction occurred.
+  human usability, or WCAG conformance. At that checkpoint, the production deployment and
+  canonical domain were unchanged, and no promotion, DNS change, production alias, or contract
+  transaction occurred.
 - This automated implementation evidence does not prove human usability, WCAG conformance, audit
   coverage, mainnet readiness, legal escrow, fiat settlement, or production security.
+
+## Phase 6B2 — Escrow Flow implementation and production release
+
+Gate: `PHASE_6B2_PASS`
+
+### Scope and preservation
+
+- Base commit `330cafc7e743cdef821279c16d6454c570ec9d58` supplied the existing real product boundary;
+  implementation commit `78cfde3f3eeb3025f8eecdc4cb2d3db69f4c3d55` applies the selected Escrow Flow presentation.
+- The landing page now explains the causal path `USD agreement -> FXRP lock -> payout + refund`,
+  with an amber top-up barrier when the lock is insufficient. Its four exact `$100` scenarios say
+  `Illustrative $100 milestone · no transaction is being sent`; they are not substituted for live
+  Coston2 values.
+- The application and invoice routes use the light operational shell, red guide and action signal,
+  bold sans hierarchy, and dark action-review surfaces. A terminal invoice presents `SETTLED`, then
+  confirmed payout/refund, then `Completed settlement -> permanent proof`. The existing warm serif
+  receipt remains the archival evidence surface.
+- Contract source and Coston2 deployment, addresses and ABIs, wallet policy, funding intent,
+  transaction journal, chain adapters, settlement receipt semantics and locators, and protected
+  historical artifacts were not changed. No prototype route or invented live fallback entered the
+  application.
+
+### Local and visual evidence
+
+- Pinned Node `22.21.1` passed lint, strict typechecking, the production build, 65 unit tests in
+  seven files, 27 one-worker deterministic browser tests, one production-hydration test, exact secret
+  scanning, protected-file checks, and `git diff --check`.
+- `artifacts/escrow-flow-final/visual-proof.json` binds 17 PNG captures totaling `3,077,898` bytes
+  to clean source head `78cfde3f`. It covers the landing, all four scenarios, disconnected and
+  connected application states, funding/release/top-up fixtures that stop before a final wallet
+  action, live terminal invoice and receipt views, expanded receipt evidence, and controlled
+  loading/RPC failure.
+- Manifest responsive checks have zero horizontal overflow; captures report no serious or critical
+  Axe finding, and safety counters record zero signature requests, sends, actual signatures,
+  actual sends, broadcasts, console errors, or page errors. Keyboard selection, polite live updates,
+  visible focus, reduced-motion parity, and `320/390/768/1024/1440` route behavior are covered by the
+  combined deterministic and visual gates.
+
+### Preview, promotion, and public verification
+
+- Protected Preview `dpl_MFtrM77aWwm3cmhaCapd8TP4qrKF` at
+  `https://proofpay-paysmat-75o4mga27-adamolekuntemitope4-2758s-projects.vercel.app` reached
+  `READY`; eight route checks, six responsive checks, sampled accessibility checks, and browser
+  failure checks passed with zero signing, send, or broadcast. Protection-backed checks are not
+  anonymous-access evidence.
+- Staged Production deployment `dpl_FAW3WmZqyeRunaxSkFqkPBu1T5Ny` at
+  `https://proofpay-paysmat-jidia45ao-adamolekuntemitope4-2758s-projects.vercel.app` reached
+  `READY`, passed the protected smoke, and was promoted exactly without rebuilding. The existing
+  `proofpay.paysmat.xyz` assignment changed to that deployment at or after
+  `2026-08-12T15:30:23Z`; no DNS record, domain, contract, or chain state was changed.
+- Anonymous canonical smoke passed eight routes, six responsive checks, sampled Axe scans with zero
+  serious or critical finding, and zero console/page errors. A bounded log review beginning
+  `2026-08-12T15:30:23Z` found zero application error, fatal, or HTTP 5xx entries. The unfiltered
+  request sample reached its 1,000-record CLI cap and is not represented as a complete traffic count.
+
+### Current chain reconciliation and boundaries
+
+- Invoice `1` passed five current receipt-reconciliation checks at block `33973183`.
+  The protected Phase 4B verifier's separate comparison of current party balances with its historical
+  snapshot is stale because invoice `2` later changed the same wallets; its expected mismatch is not
+  claimed as a current verifier pass or treated as a chain failure.
+- The isolated public-only invoice `2` verifier passed all seven checks at final definitive block
+  `33973412`. Both invoices remain `RELEASED`; active liabilities and contract FXRP balance remain
+  zero; protected historical artifacts are byte-identical. No Phase 6B2 signature, send, broadcast,
+  or live-flow script was performed.
+- This is automated Coston2 testnet and hosted-interface evidence. It is not a human usability
+  study, WCAG conformance, an audit, mainnet readiness, legal escrow, fiat settlement, proof of
+  delivery truth, or production-security evidence.

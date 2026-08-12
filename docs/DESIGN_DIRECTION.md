@@ -1,9 +1,77 @@
-# Signal Ledger design direction
+# Escrow Flow design direction
 
-Status: Phase 6B1 implementation, local validation, and the single non-production Preview pass.
-This remains the locked interface direction; human visual review is a separate decision.
+Status: Phase 6B2 implementation, local validation, protected Preview, and promoted Production pass.
+Escrow Flow is the current presentation direction. Automated visual evidence does not substitute
+for human usability research or a WCAG-conformance audit.
 
-## Thesis
+## Phase 6B2 Escrow Flow
+
+### Thesis and causal mechanism
+
+Escrow Flow makes the product's actual money logic visible before introducing technical proof:
+`USD agreement -> FXRP lock -> payout + refund`, or an amber `top-up required` barrier when the
+existing lock cannot cover the target. The hero pairs the product promise with this mechanism in
+the first viewport. Its disclosure is exact: `Illustrative $100 milestone · no transaction is
+being sent`. The four scenarios preserve the tested six-decimal results already documented here;
+they are client-side explanatory arithmetic and never replace a failed or unavailable Coston2 read.
+
+The application is the operational continuation of that mechanism. Active milestones lead with
+the next authorized action and its movement boundary. Terminal milestones present `SETTLED`, the
+confirmed payout and refund, and only then the handoff `Completed settlement -> permanent proof`.
+The settlement receipt remains a separate archival object rather than adopting the operational
+terminal treatment.
+
+### Visual system
+
+- Landing, application, and invoice routes use a light editorial shell (`#F2F1EC`), white
+  operational surfaces (`#FFFEFA`), near-black ink (`#121411`), and Flare red (`#C9143A`) for rules,
+  action edges, and decisive controls.
+- The hero mechanism and transaction-intent surfaces use dark `#171A17` fields. They are reserved
+  for causal simulation and exact action review, not used as an ambient crypto theme.
+- Amber is reserved for the insufficient-lock/top-up barrier. Confirmed payout/refund remains a
+  distinct successful outcome; color is reinforced by labels and structure.
+- Product, terminal, money, and control hierarchy use bold modern sans typography. Technical
+  identifiers remain monospaced. The warm receipt canvas and serif document insert remain the only
+  archival paper layer.
+- Thin rules and red guides organize the route. Square surfaces dominate; decorative card grids,
+  gradients, glow, coins, token art, bento layouts, and prototype-only routes or assets are absent.
+
+### Behavior, responsive layout, and accessibility
+
+- Scenario selection changes only the causal result. Native buttons support pointer, Tab,
+  Arrow-key, Home/End, Enter, and Space operation; focus remains visible and the result is announced
+  through a polite live region.
+- Motion explains a state transition or flow direction only. Reduced-motion mode removes the
+  animation while retaining the same values, focus, controls, and announcement.
+- Acceptance widths are `320`, `390`, `768`, `1024`, and `1440` CSS pixels. Mobile uses a `2 x 2`
+  scenario selector, a vertical causal flow, full-width primary actions, stacked forms and wallet
+  controls, and identifiers that wrap without horizontal overflow.
+- Interactive targets remain at least `44 x 44` CSS pixels; focus treatment, text contrast, semantic
+  headings, landmarks, native disclosures, and distinct loading, unknown, unavailable-receipt, and
+  RPC-failure states remain required.
+
+### Preservation and evidence
+
+Escrow Flow changes presentation, not authority. Contract and deployment records, wallet policy,
+funding-intent and transaction-journal behavior, receipt locators and decoded evidence, and
+fail-closed data adapters remain authoritative. It introduces no invented live facts, prototype
+fallback, signature request, send, or broadcast.
+
+Implementation commit `78cfde3f3eeb3025f8eecdc4cb2d3db69f4c3d55` produced 17 bound captures in
+`artifacts/escrow-flow-final/visual-proof.json`, protected READY Preview
+`dpl_MFtrM77aWwm3cmhaCapd8TP4qrKF`, and promoted READY Production deployment
+`dpl_FAW3WmZqyeRunaxSkFqkPBu1T5Ny`. Responsive, keyboard, reduced-motion, controlled-failure,
+sampled accessibility, public-smoke, log, and read-only chain gates pass. This is automated Coston2
+testnet evidence, not a claim of human usability, WCAG conformance, audit coverage, mainnet
+readiness, legal escrow, fiat settlement, delivery truth, or production security.
+
+## Historical Phase 6B1 Signal Ledger direction
+
+The following direction sheet records the prior Phase 6B1 checkpoint. Escrow Flow supersedes its
+presentation choices while preserving its product nouns, evidence hierarchy, and behavioral
+boundaries.
+
+### Thesis
 
 Signal Ledger presents ProofPay as a causal record of one dollar-priced FXRP milestone: what was
 agreed, what was locked, what evidence arrived, what may happen next, and which Coston2 records
@@ -15,7 +83,7 @@ The application shell then makes the next permitted milestone action dominant. T
 collapse to their outcome and route readers to the settlement receipt. The receipt remains the warm
 document layer where confirmed values and their technical evidence can be inspected.
 
-## Information layers
+### Information layers
 
 1. **Orient:** product identity, Coston2 testnet context, milestone state, user role, and USD target.
 2. **Understand:** lock, payout/refund or shortfall, lifecycle consequence, and next permitted action.
@@ -27,7 +95,7 @@ document layer where confirmed values and their technical evidence can be inspec
 The product layer calls a successful outcome `SETTLED`. `RELEASED` remains available only as the
 technical contract state. Copy follows object -> event -> consequence -> evidence -> next step.
 
-## Landing composition
+### Landing composition
 
 The landing page order is fixed: product header; hero and illustrative milestone; problem; how
 ProofPay works; price protection; live proof; built on Flare; final call to action. The first
@@ -39,7 +107,7 @@ The live-proof section is one decoded settlement, not a metric grid. It leads wi
 money outcome for invoice `2` and keeps full identifiers available through the existing copy,
 reveal, and explorer controls. No invented value may fill a failed or unavailable read.
 
-## Shell and document relationship
+### Shell and document relationship
 
 - Landing and application routes use the cool shell canvas and white operational surfaces.
 - The product header carries ProofPay, a visible `Coston2 testnet` badge, wallet state where
@@ -55,7 +123,7 @@ reveal, and explorer controls. No invented value may fill a failed or unavailabl
   prominent than the milestone title, while confirmed settlement evidence remains progressively
   inspectable.
 
-## Type and hierarchy
+### Type and hierarchy
 
 - Product shell, landing copy, controls, and operational money: modern system sans serif.
 - Receipt and document inserts only: the existing editorial serif.
@@ -65,7 +133,7 @@ reveal, and explorer controls. No invented value may fill a failed or unavailabl
 - Uppercase is limited to brief utilities, lifecycle tokens, and document marks. Paragraphs and
   action names use normal sentence case.
 
-## Palette, rules, and depth
+### Palette, rules, and depth
 
 | Role | Value |
 | --- | --- |
@@ -86,14 +154,14 @@ Surfaces are square or use at most a `4px` radius. Thin rules carry most groupin
 signal edge is reserved for action, confirmed, or blocked states. The receipt/document insert is
 the only place for a shadow.
 
-## Motion
+### Motion
 
 Motion must explain cause: a selected scenario changes its settlement result, a disclosure opens,
 or an action state advances. Transitions use `160-240ms` ease-out timing. There is no ambient,
 parallax, looping, or decorative movement. With `prefers-reduced-motion: reduce`, state changes are
 instant and retain the same information, focus, and announcements.
 
-## Responsive behavior
+### Responsive behavior
 
 The interface must remain coherent at `320`, `390`, `768`, `1024`, and `1440` CSS pixels and at
 `200%` zoom. Mobile uses a `16px` gutter, full-width primary actions, copy before the illustrative
@@ -101,7 +169,7 @@ scenario, a `2 x 2` scenario control layout, and one lifecycle representation. I
 without horizontal overflow. Wide layouts may pair a dominant reading column with context, but
 must not become a dashboard sidebar.
 
-## Accessibility
+### Accessibility
 
 - Semantic landmarks and ordered headings describe every route.
 - Native links, buttons, and disclosures remain fully keyboard operable.
@@ -122,7 +190,7 @@ hosted route, responsive, keyboard, accessibility, failure, and unsigned wallet-
 The Preview evidence is not a claim of anonymous access, human usability testing, WCAG
 conformance, audit coverage, mainnet readiness, or production security.
 
-## Avoid list
+### Avoid list
 
 No glassmorphism, dark crypto theme, gradients, neon, glow, token or coin illustrations, bento
 layout, pricing table, testimonial, logo strip, decorative chart, huge diagram, generated blob,

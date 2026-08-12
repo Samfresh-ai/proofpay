@@ -1,12 +1,13 @@
 # ProofPay interface specification
 
-Status: Phases 5A–5D are implemented and validated, and Phase 6A production remains live at the
-existing canonical domain. Phase 6B1 Signal Ledger implementation, local validation, and its
-single protected non-production Preview pass.
+Status: Phases 5A–5D are implemented and validated; Phase 6A and Phase 6B1 remain historical
+checkpoints. Phase 6B2 Escrow Flow implementation, validation, protected Preview, and Production
+promotion pass at the existing canonical domain.
 
 ## Current synopsis
 
-The current application has `/app`, `/invoice/[id]`, and `/receipt/[id]`. Arbitrary positive invoice
+The current application has a real landing page at `/` plus `/app`, `/invoice/[id]`, and
+`/receipt/[id]`. Arbitrary positive invoice
 IDs use direct pinned state reads; verified decoded receipts are available only where lifecycle
 transaction locators are preserved. Both invoice `1` and browser-settled invoice `2` have preserved
 locators. No generic event-history discovery, backend, database, indexer, authentication, or
@@ -22,8 +23,9 @@ Released public records use `SETTLED`, `Payment settled`, and `View settlement r
 `RELEASED` remains the technical contract state. The settlement rail leads with human meaning—
 milestone agreed, FXRP funded, delivery evidence attached, payment settled—and keeps event names,
 blocks, transactions, amounts, price observations, and commitments in progressive technical
-evidence disclosures. The warm editorial document, compact mobile rail, shortened identifiers,
-keyboard focus, and reduced-motion behavior remain the current visual and accessibility direction.
+evidence disclosures. The warm editorial receipt, compact mobile rail, shortened identifiers,
+keyboard focus, and reduced-motion behavior remain part of the current Escrow Flow visual and
+accessibility direction.
 
 Top-up is repeatable at the intent layer because the contract may require another exact shortfall
 after a later XRP price decrease. A top-up intent binds chain, contract, invoice, client account,
@@ -41,11 +43,89 @@ release quote reports a nonzero shortfall and no applicable intent is pending re
 zero-shortfall refresh offers release, not top-up. Funding, evidence submission, release,
 cancellation, and refund retain their one-time state protections.
 
-## Phase 6B1 Signal Ledger interface — Preview gate passed
+## Phase 6B2 Escrow Flow interface — Production gate passed
 
-Phase 6B1 changes the public presentation and product hierarchy without changing the deployed
-contract, wallet-action policy, funding intent, journal/reconciliation behavior, evidence
-commitments, receipt locators, canonical production domain, or current production deployment. The
+Phase 6B2 changes the real product presentation while preserving every authoritative contract,
+read, wallet-action, funding-intent, journal, and receipt boundary. Base commit
+`330cafc7e743cdef821279c16d6454c570ec9d58` and implementation commit
+`78cfde3f3eeb3025f8eecdc4cb2d3db69f4c3d55` define the release.
+
+### Landing and causal hierarchy
+
+The first viewport combines `Keep the milestone in dollars. Settle it in FXRP.` with the real
+product mechanism: `USD agreement -> FXRP lock -> payout + refund`, or an amber `top-up required`
+barrier when the lock is insufficient. The scenario disclosure is exact:
+`Illustrative $100 milestone · no transaction is being sent`. Its four selections preserve these
+existing deterministic results:
+
+| Release price | Required now | Result |
+| --- | --- | --- |
+| `$1.25` | `80 FXRP` | payout `80`, refund `30` |
+| `$1.00` | `100 FXRP` | payout `100`, refund `10` |
+| `$0.95` | `105.263158 FXRP` | payout `105.263158`, refund `4.736842` |
+| `$0.90` | `111.111112 FXRP` | shortfall `1.111112`; release blocked pending top-up |
+
+The scenario is explanatory client math and is never rendered as a live read or fallback. Native
+controls retain focus and support pointer, Tab, Arrow keys, Home/End, Enter, and Space. The changed
+result uses a polite live region. Reduced-motion mode removes transition movement without changing
+content or operation.
+
+### Application, invoice, and receipt relationship
+
+- The landing, `/app`, and invoices use a light editorial canvas, white operational surfaces,
+  strong sans hierarchy, near-black text, and Flare-red guide rules and decisive actions.
+- The dark hero mechanism and dark action/transaction-intent surfaces are reserved for causal
+  simulation and exact review. Amber is reserved for the top-up barrier.
+- `/app` preserves creation, lookup, connection, deadline, and journal behavior. Mobile stacks the
+  form and wallet controls; the scenario selector is `2 x 2` and the causal flow becomes vertical.
+- Active invoices retain the centralized role/state/deadline/quote policy and one state-authorized
+  action. Their dark review surfaces still expose maximum movement, recipient, mutable terms, and
+  completion proof before any wallet request.
+- Terminal invoices render `SETTLED`, then confirmed payout and refund, then the bridge
+  `Completed settlement -> permanent proof`. This ordering prevents the receipt link from
+  displacing the money outcome.
+- `SettlementReceipt` semantics, verified values, copy/reveal/explorer controls, receipt locators,
+  and progressive evidence remain unchanged. The receipt alone retains the warm canvas, serif
+  archival insert, and technical `RELEASED` evidence.
+
+Loading, unknown invoice, unavailable receipt, and RPC failure remain separate fail-closed states.
+No failed read substitutes a stored artifact, no prototype route or asset enters the application,
+and no invented value fills missing evidence.
+
+### Validation and release evidence
+
+- Lint, strict typechecking, production build, 65 unit tests, 27 deterministic browser tests, one
+  production-hydration test, exact secret scanning,
+  protected-file checks, and `git diff --check` pass.
+- `artifacts/escrow-flow-final/visual-proof.json` binds 17 PNG captures totaling `3,077,898` bytes
+  to clean implementation head `78cfde3f`. It covers live read-only surfaces, deterministic
+  disconnected/connected/action fixtures that stop before the final wallet action, and controlled
+  pre-network loading and RPC failure. Its responsive checks report zero horizontal overflow; all
+  safety and browser-error counters, including signature requests, sends, and broadcasts, are zero.
+- Protected Preview `dpl_MFtrM77aWwm3cmhaCapd8TP4qrKF` at
+  `https://proofpay-paysmat-75o4mga27-adamolekuntemitope4-2758s-projects.vercel.app` reached
+  `READY` and passed eight route and six responsive checks through Vercel's automation bypass.
+  That evidence does not prove anonymous access.
+- Exact staged Production deployment `dpl_FAW3WmZqyeRunaxSkFqkPBu1T5Ny` at
+  `https://proofpay-paysmat-jidia45ao-adamolekuntemitope4-2758s-projects.vercel.app` reached
+  `READY`, passed protected checks, and was promoted without rebuilding or changing DNS. Anonymous
+  smoke at `https://proofpay.paysmat.xyz` passes. The bounded 1,000-record log sample beginning
+  `2026-08-12T15:30:23Z` contains zero application error, fatal, or HTTP 5xx entry.
+- Invoice `1` passes five current receipt-reconciliation checks at block `33973183`; its legacy
+  Phase 4B comparison of current party balances with the historical snapshot is stale after invoice
+  `2` and is not claimed as a current verifier pass. The isolated invoice-2 verifier passes all seven
+  checks at definitive block `33973412`. Liabilities and contract balance remain zero, historical artifacts are
+  unchanged, and Phase 6B2 performed no signature, send, broadcast, or contract transaction.
+
+This is automated Coston2 testnet and hosted-interface evidence. It is not human usability testing,
+WCAG conformance, an audit, mainnet readiness, legal escrow, fiat settlement, delivery truth, or a
+production-security claim.
+
+## Historical Phase 6B1 Signal Ledger interface — Preview gate passed
+
+At its checkpoint, Phase 6B1 changed the public presentation and product hierarchy without changing
+the deployed contract, wallet-action policy, funding intent, journal/reconciliation behavior,
+evidence commitments, receipt locators, canonical production domain, or then-current production deployment. The
 locked visual direction is recorded in `docs/DESIGN_DIRECTION.md`. Local automated, read-only live,
 visual, and protected hosted-Preview evidence validates the implementation.
 
@@ -140,9 +220,9 @@ accessibility at `320` and `1440` CSS pixels. Read-only Coston2 reconciliation p
 evidence, not active-live-invoice coverage, anonymous access evidence, human usability testing, or
 WCAG-conformance proof.
 
-Production deployment `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9` and canonical domain
-`https://proofpay.paysmat.xyz` remain unchanged. Phase 6B1 performed no promotion, DNS change,
-production alias, or contract transaction.
+At the Phase 6B1 checkpoint, Production deployment `dpl_HYzfUxvqqiLijsY2vCaNMXP268V9` and
+canonical domain `https://proofpay.paysmat.xyz` remained unchanged. Phase 6B1 performed no
+promotion, DNS change, production alias, or contract transaction.
 
 ## Historical Phase 5A read-only boundary
 
