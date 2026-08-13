@@ -7,6 +7,7 @@ Keep a freelance milestone priced in dollars while settling it in FXRP.
 ## Live project
 
 - Production: [proofpay.paysmat.xyz](https://proofpay.paysmat.xyz)
+- Demo video: [ProofPay — Flare Summer Signal Demo](https://youtu.be/LV8rceGTdMU)
 - Create a milestone: [proofpay.paysmat.xyz/app](https://proofpay.paysmat.xyz/app)
 - Network: Flare Testnet Coston2, chain ID `114`
 - Contract: [`0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21`](https://coston2-explorer.flare.network/address/0x53bE2D49f4bFCF2cc04A225Ccb7398Fb5E5EAA21)
