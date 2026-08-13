@@ -25,3 +25,13 @@ artifacts/**/test-results/
 artifacts/interface/test-results/
 artifacts/interface/live-test-results/
 artifacts/browser-settlement/test-results/
+
+# Local visual QA and submission-production output stays outside the public tree.
+artifacts/browser-settlement/
+artifacts/escrow-flow-final/
+artifacts/interface/
+artifacts/interface-refinement/
+artifacts/public-deployment/
+artifacts/signal-ledger/
+artifacts/submission/
+video/

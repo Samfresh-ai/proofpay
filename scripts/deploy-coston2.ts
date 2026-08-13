@@ -437,12 +437,11 @@ async function collectPreparedDeployment(): Promise<PreparedDeployment> {
     throw new Error(`Expected Coston2 chain 114, received ${actualChainId}.`);
   }
 
-  const [phaseOne, phaseThree, contractSpec, statusDocument, artifact, gitCommit] =
+  const [phaseOne, phaseThree, architecture, artifact, gitCommit] =
     await Promise.all([
       readJson<PhaseOneArtifact>(resolve(REPOSITORY_ROOT, "artifacts/flare-probe.json")),
       readJson<PhaseThreeArtifact>(resolve(REPOSITORY_ROOT, "artifacts/ftso-tolerance.json")),
-      readFile(resolve(REPOSITORY_ROOT, "docs/CONTRACT_SPEC.md"), "utf8"),
-      readFile(resolve(REPOSITORY_ROOT, "docs/STATUS.md"), "utf8"),
+      readFile(resolve(REPOSITORY_ROOT, "docs/ARCHITECTURE.md"), "utf8"),
       readJson<ForgeArtifact>(ESCROW_ARTIFACT_PATH),
       readGitCommit(),
     ]);
@@ -466,11 +465,10 @@ async function collectPreparedDeployment(): Promise<PreparedDeployment> {
     throw new Error("Phase 3B live FTSO evidence does not support this deployment configuration.");
   }
   if (
-    !contractSpec.includes(XRP_USD_FEED_ID) ||
-    !contractSpec.includes("MAX_PRICE_AGE = 30 seconds") ||
-    !statusDocument.includes("constructor now receives feed ID and maximum price age")
+    !architecture.includes(XRP_USD_FEED_ID) ||
+    !architecture.includes("30-second maximum price age")
   ) {
-    throw new Error("The contract specification/status does not support the constructor arguments.");
+    throw new Error("The public architecture record does not support the constructor arguments.");
   }
   if (
     artifact.metadata.compiler.version !== "0.8.25+commit.b61c2a91" ||

@@ -77,7 +77,7 @@ Current attribution requirement inside ProofPay: identify the repository and exa
 
 ### Inspected files and useful patterns
 
-| Upstream path | What was inspected | ProofPay use in Phase 0 |
+| Upstream path | What was inspected | ProofPay treatment |
 | --- | --- | --- |
 | `src/lib/wagmi.ts` | Flare/Coston2 chain selection and injected-wallet configuration | Reference only |
 | `src/lib/chainUtils.ts` | Chain IDs, explorers, and artifact-network mapping | Reference only |
@@ -87,13 +87,7 @@ Current attribution requirement inside ProofPay: identify the repository and exa
 | `src/lib/ftsoUtils.ts` | XRP/USD feed ID and FTSOv2 read | Reference only; its floating-point display conversion will not be reused for financial logic |
 | `src/components/Transfer.tsx` | Wallet-approved ERC-20 transfer and receipt flow | Reference only; its floating-point amount parsing will not be reused |
 
-Observed repository inconsistency: `Transfer.tsx` and `Redeem.tsx` import `src/hooks/useFXRPBalance`, but that file is absent at the inspected commit. ProofPay will rely on official Flare documentation and direct probe evidence rather than assuming the demo currently builds.
-
-## Landing-page prompting guide
-
-- Source: https://x.com/aiwithmayank/status/2080228272911389138
-- Inspected: 2026-08-04
-- Retained method only: explicitly name product, user, visual thesis, typography, page sequence, interaction, motion, responsiveness, and things to avoid.
-- Not retained: glassmorphism, generic SaaS composition, bento grids, testimonials, pricing sections, logo clouds, or other preset aesthetics.
-
-No text, image, or code from this guide has been copied into ProofPay.
+Observed repository inconsistency: `Transfer.tsx` and `Redeem.tsx` import
+`src/hooks/useFXRPBalance`, but that file is absent at the inspected commit.
+ProofPay therefore relies on official Flare documentation and direct Coston2
+probe evidence rather than assuming the demo currently builds.
