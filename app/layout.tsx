@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 
 import { ProofPayWalletProvider } from "@/components/wallet-provider";
 import {
-  PROOFPAY_BASE_APP_ID,
   PROOFPAY_PUBLIC_DESCRIPTION,
   PROOFPAY_PUBLIC_TITLE,
   resolveDeploymentOrigin,
@@ -23,9 +22,6 @@ export const metadata: Metadata = {
     template: "%s — ProofPay",
   },
   description: PROOFPAY_PUBLIC_DESCRIPTION,
-  other: {
-    "base:app_id": PROOFPAY_BASE_APP_ID,
-  },
   openGraph: {
     type: "website",
     siteName: "ProofPay",
