@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { PROOFPAY_PUBLIC_DESCRIPTION } from "../lib/site-metadata";
+import { PROOFPAY_BASE_APP_ID, PROOFPAY_PUBLIC_DESCRIPTION } from "../lib/site-metadata";
 
 const transactionAction =
   /connect(?: a)? wallet|sign|approve|fund|submit evidence|top[ -]?up|release|refund|cancel|send(?: transaction)?/i;
@@ -38,6 +38,7 @@ test("root renders the Escrow Flow landing page with deployment-safe metadata", 
   await expect(page).toHaveURL(/\/$/u);
   await expect(page).toHaveTitle("Dollar-priced FXRP milestones");
   await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", PROOFPAY_PUBLIC_DESCRIPTION);
+  await expect(page.locator('meta[name="base:app_id"]')).toHaveAttribute("content", PROOFPAY_BASE_APP_ID);
   const canonical = await page.locator('link[rel="canonical"]').getAttribute("href");
   expect(new URL(canonical ?? "", page.url()).pathname).toBe("/");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(

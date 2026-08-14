@@ -1,6 +1,7 @@
 export const PROOFPAY_PUBLIC_TITLE = "ProofPay — FXRP Milestone Settlement";
 export const PROOFPAY_PUBLIC_DESCRIPTION =
   "Fund a USD-priced milestone with FXRP, preserve its value through Flare pricing, and verify the settlement on Coston2.";
+export const PROOFPAY_BASE_APP_ID = "69b7f2353371bf602acd7d66";
 
 interface DeploymentOriginInput {
   publicSiteUrl?: string | undefined;
